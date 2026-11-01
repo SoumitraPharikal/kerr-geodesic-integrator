@@ -103,3 +103,40 @@ Substituting $p_0 = -E$ and $p_\phi = L_z$:
 $$\frac{dp_r}{d\lambda} = -\frac{1}{2} \left[ \left(+\frac{2M}{r^2 f(r)^2}\right) E^2 + \left(+\frac{2M}{r^2}\right) p_r^2 - \left(\frac{2}{r^3}\right) L_z^2 \right] = -\frac{M E^2}{r^2 f(r)^2} - \frac{M}{r^2} p_r^2 + \frac{L_z^2}{r^3}$$
 
 The positive sign of $\partial_r g^{00}$ ensures that $-\frac{1}{2}(\partial_r g^{00}) p_0^2 = -\frac{M E^2}{r^2 f(r)^2} < 0$, which yields an attractive gravitational acceleration directed inward toward the black hole. A negative sign would erroneously generate a repulsive gravitational force.
+
+
+---
+
+## 4. Canonical Hamiltonian and Geodesic Vector Field (Stage 1B)
+
+### A. The Canonical Hamiltonian
+The Hamiltonian describing geodesic motion of a particle in curved spacetime is defined as:
+$$\mathcal{H}(x, p) = \frac{1}{2} g^{\mu\nu}(x) p_\mu p_\nu$$
+where $x^\mu = (x^0, r, \theta, \phi)$ are contravariant coordinates and $p_\mu = (p_0, p_r, p_\theta, p_\phi)$ are covariant canonical momenta conjugate to $x^\mu$.
+
+### B. Eight-Dimensional State Ordering Convention
+The state vector $y$ is ordered strictly as:
+$$y = (x^0, r, \theta, \phi, p_0, p_r, p_\theta, p_\phi)^T \in \mathbb{R}^8$$
+- Indices $0 \dots 3$: Contravariant spacetime coordinates $x^\mu$ with $x^0 = ct$.
+- Indices $4 \dots 7$: Covariant canonical momenta $p_\mu$.
+
+### C. The Canonical Equations of Motion
+The continuous first-order Hamilton equations are:
+$$\frac{dx^\mu}{d\lambda} = \frac{\partial \mathcal{H}}{\partial p_\mu} = g^{\mu\nu}(x) p_\nu$$
+$$\frac{dp_\mu}{d\lambda} = -\frac{\partial \mathcal{H}}{\partial x^\mu} = -\frac{1}{2} \left(\frac{\partial g^{\alpha\beta}}{\partial x^\mu}\right) p_\alpha p_\beta$$
+where $\lambda$ is the affine parameter.
+
+### D. Conservation of $p_0$ and $p_\phi$ in Schwarzschild Spacetime
+In Schwarzschild spacetime:
+- **Stationarity:** The metric tensor does not depend on coordinate time $x^0$, i.e., $\partial_0 g^{\alpha\beta} \equiv 0$. Consequently:
+  $$\frac{dp_0}{d\lambda} = -\frac{1}{2} \left(\partial_0 g^{\alpha\beta}\right) p_\alpha p_\beta = 0 \implies p_0 = \text{constant} = -E$$
+  This yields conservation of energy.
+- **Axisymmetry:** The metric tensor does not depend on azimuth $\phi$, i.e., $\partial_\phi g^{\alpha\beta} \equiv 0$. Consequently:
+  $$\frac{dp_\phi}{d\lambda} = -\frac{1}{2} \left(\partial_\phi g^{\alpha\beta}\right) p_\alpha p_\beta = 0 \implies p_\phi = \text{constant} = L_z$$
+  This yields conservation of the axial component of angular momentum.
+
+### E. The Null-Geodesic Condition vs. General Hamiltonian Definition
+- **General Hamiltonian Definition:** The function $\mathcal{H}(x, p) = \frac{1}{2} g^{\mu\nu} p_\mu p_\nu$ is physically well-defined for arbitrary state vectors $(x, p)$. For timelike particles with rest mass $\mu$, $\mathcal{H} = -\frac{1}{2}\mu^2 < 0$; for spacelike trajectories, $\mathcal{H} > 0$.
+- **Null Constraint:** For photons (massless particles), trajectories must lie on the null sub-manifold:
+  $$\mathcal{H}(x, p) = 0$$
+The production Hamiltonian functions (`hamiltonian_value` and `hamiltonian_rhs`) evaluate $\mathcal{H}$ and $\dot{y}$ for arbitrary valid states without artificially imposing or assuming $\mathcal{H} = 0$. The condition $\mathcal{H} = 0$ is a physical constraint on the initial data and an invariant to be monitored numerically during integration.

@@ -48,15 +48,43 @@ To avoid coordinate and geometric singular points during finite differencing:
 
 ## 4. Current Implementation Scope and Deferred Features
 
-### Currently Implemented (Stage 1A)
+### Currently Implemented (Stage 1A & Stage 1B)
 - Abstract spacetime metric interface (`SpacetimeMetric`).
 - Analytical Schwarzschild metric tensor evaluation ($g_{\mu\nu}$ and $g^{\mu\nu}$).
 - Exact non-zero contravariant metric derivatives ($\partial_r g^{00}, \partial_r g^{rr}, \partial_r g^{\theta\theta}, \partial_r g^{\phi\phi}, \partial_\theta g^{\phi\phi}$).
 - Input validation: $M > 0$, $r > 2M$, and $\theta \in (0, \pi)$.
+- Canonical Hamiltonian value evaluator: $\mathcal{H}(x, p) = \frac{1}{2} g^{\mu\nu} p_\mu p_\nu$ (`hamiltonian_value`).
+- Canonical Hamiltonian right-hand side vector field: $\dot{x}^\mu = g^{\mu\nu} p_\nu, \dot{p}_\mu = -\frac{1}{2}(\partial_\mu g^{\alpha\beta}) p_\alpha p_\beta$ (`hamiltonian_rhs`).
 
 ### Explicitly Deferred (Subsequent Stages)
-- **Stage 1B:** Canonical Hamiltonian vector field evaluator ($\dot{x}^\mu = g^{\mu\nu}p_\nu, \dot{p}_\mu = -\frac{1}{2}\partial_\mu g^{\alpha\beta}p_\alpha p_\beta$).
 - **Stage 1C:** Initial condition generators for incoming photons ($p_r = -\frac{E}{f}\sqrt{1 - f b^2/r^2}$).
 - **Stage 1D:** Adaptive ODE integration with SciPy `DOP853`, directional event triggers, and horizon stopping surface ($r_{\rm cut} = 2M(1+\epsilon)$).
 - **Stage 2:** Comprehensive physical validation (weak-field deflection series, critical impact parameter bisection, photon sphere Lyapunov exponent).
 - **Stage 3:** Kerr metric implementation in Boyer–Lindquist coordinates, ergosphere detection, Carter constant tracking.
+
+---
+
+## 5. Canonical Hamiltonian Vector Field Verification (Stage 1B)
+
+The canonical vector field implementation in `hamiltonian_rhs` is verified through two decoupled, complementary validation strategies:
+
+### A. Independent Analytical Expression Comparisons (VAL-HAM-01, 02, 03)
+- The test suite defines independent Python functions (`explicit_schwarzschild_hamiltonian`, `explicit_schwarzschild_xdot`, `explicit_schwarzschild_pdot`) implementing the manual algebraic formulas for Schwarzschild spacetime.
+- These functions do not call production metric derivative helpers or production tensor contractions.
+- Evaluated across diverse masses, radii, polar angles, and 4-momenta (both null and non-null states).
+- Acceptance criteria: exact double-precision equality up to rounding error ($\le 10^{-14}$).
+
+### B. Numerical Canonical-Gradient Verification (VAL-HAM-04)
+To verify that the vector field $\dot{y}$ corresponds to the phase-space gradients of $\mathcal{H}$, central finite differences are performed directly on `hamiltonian_value`:
+
+1. **Velocity Components ($\dot{x}^\mu = \frac{\partial \mathcal{H}}{\partial p_\mu}$):**
+   $$\frac{\partial \mathcal{H}}{\partial p_\mu} \approx \frac{\mathcal{H}(x, p + h e_\mu) - \mathcal{H}(x, p - h e_\mu)}{2h} + \mathcal{O}(h^2)$$
+   Because $\mathcal{H}$ is quadratic in $p$, the theoretical truncation error in a central difference is $\mathcal{O}(h^2)$. For $h = 10^{-5}$, truncation error is $\sim 10^{-10}$, while cancellation error is $\epsilon_{\rm mach} / h \sim 2 \times 10^{-11}$. The relative tolerance of $10^{-8}$ provides rigorous verification.
+
+2. **Momentum Rates ($\dot{p}_\mu = -\frac{\partial \mathcal{H}}{\partial x^\mu}$):**
+   $$\frac{\partial \mathcal{H}}{\partial x^\mu} \approx \frac{\mathcal{H}(x + h e_\mu, p) - \mathcal{H}(x - h e_\mu, p)}{2h} + \mathcal{O}(h^2)$$
+   - For $x^0$ and $\phi$: $\partial_0 \mathcal{H} = \partial_\phi \mathcal{H} \equiv 0$ identically due to stationarity and axisymmetry.
+   - For $r$ and $\theta$: finite differences of `hamiltonian_value` are evaluated using the metric evaluator at perturbed coordinates.
+   - Verified against $-\dot{p}_\mu$ to relative tolerance $10^{-7}$.
+
+*Note on Project Scope:* Geodesics have not yet been numerically integrated. Stage 1B implements and validates only the instantaneous vector field $\dot{y} = f(y)$. Numerical time-stepping is deferred to Stage 1D.
