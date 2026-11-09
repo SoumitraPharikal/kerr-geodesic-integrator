@@ -9,7 +9,7 @@ Implements Stage 1B tests:
 - VAL-HAM-06: Comprehensive input validation (shapes, non-finite values, invalid metric, non-null states).
 """
 
-from typing import Tuple
+from typing import Callable, Tuple
 import numpy as np
 import pytest
 
@@ -21,9 +21,17 @@ from geodesics.constants import (
 )
 from geodesics.hamiltonian import (
     STATE_DIMENSION,
+    carter_constant,
+    carter_constant_radial,
+    carter_separation_constant,
+    carter_separation_constant_radial,
+    conserved_angular_momentum,
+    conserved_energy,
     hamiltonian_rhs,
     hamiltonian_value,
 )
+from geodesics.initial_conditions import kerr_geodesic_initial_state
+from geodesics.metrics.kerr import KerrMetric
 from geodesics.metrics.schwarzschild import SchwarzschildMetric
 
 
@@ -307,7 +315,11 @@ class TestCanonicalGradients:
             h_minus = hamiltonian_value(x, p_minus, metric)
             numerical_dH_dp[mu] = (h_plus - h_minus) / (2.0 * h)
 
-        # Truncation error for quadratic H is O(h^2), roundoff is eps / h ~ 1e-11
+        # Because H(x, p) is an exact quadratic form in the conjugate momenta p_mu
+        # (H = 1/2 g^{ab} p_a p_b), the central finite difference quotient is ALGEBRAICALLY
+        # EXACT in exact arithmetic (truncation error is identically zero).
+        # Any observed discrepancy between computed_xdot and numerical_dH_dp arises solely
+        # from floating-point roundoff cancellation: O(eps_mach / h) ~ 2e-16 / 1e-5 ~ 2e-11.
         for mu in range(4):
             rel_err = abs(computed_xdot[mu] - numerical_dH_dp[mu]) / abs(computed_xdot[mu])
             assert rel_err <= 1e-8, (
@@ -329,30 +341,18 @@ class TestCanonicalGradients:
         computed_pdot = rhs[4:]
 
         # Numerical gradient of H with respect to x^mu:
-        # dH / dx^mu = (H(x + h*e_mu, p) - H(x - h*e_mu, p)) / (2h) + O(h^2)
+        # dH / dx^mu = (H(x + h*e_mu, p) - H(x - h*e_mu, p)) / (2h)
+        # Evaluated via actual function calls to hamiltonian_value for all four coordinates.
         numerical_dH_dx = np.zeros(4, dtype=np.float64)
+        for mu in range(4):
+            x_plus = x.copy()
+            x_minus = x.copy()
+            x_plus[mu] += h
+            x_minus[mu] -= h
 
-        # For x0 and phi: H does not depend on x0 or phi (stationarity and axisymmetry)
-        numerical_dH_dx[IDX_X0] = 0.0
-        numerical_dH_dx[IDX_PHI] = 0.0
-
-        # For r:
-        x_r_plus = x.copy()
-        x_r_minus = x.copy()
-        x_r_plus[IDX_R] += h
-        x_r_minus[IDX_R] -= h
-        numerical_dH_dx[IDX_R] = (
-            hamiltonian_value(x_r_plus, p, metric) - hamiltonian_value(x_r_minus, p, metric)
-        ) / (2.0 * h)
-
-        # For theta:
-        x_th_plus = x.copy()
-        x_th_minus = x.copy()
-        x_th_plus[IDX_THETA] += h
-        x_th_minus[IDX_THETA] -= h
-        numerical_dH_dx[IDX_THETA] = (
-            hamiltonian_value(x_th_plus, p, metric) - hamiltonian_value(x_th_minus, p, metric)
-        ) / (2.0 * h)
+            h_plus = hamiltonian_value(x_plus, p, metric)
+            h_minus = hamiltonian_value(x_minus, p, metric)
+            numerical_dH_dx[mu] = (h_plus - h_minus) / (2.0 * h)
 
         # Verify dot{p}_mu == -dH / dx^mu
         expected_pdot_from_H = -numerical_dH_dx
@@ -361,12 +361,18 @@ class TestCanonicalGradients:
             c_val = computed_pdot[mu]
             e_val = expected_pdot_from_H[mu]
             if abs(c_val) > 1e-12:
+                # Coordinate dependencies in the metric inverse components are nonlinear
+                # (rational in r and trigonometric in theta), so central finite differences
+                # incur genuine truncation error of order O(h^2) in addition to roundoff error O(eps / h).
                 rel_err = abs(c_val - e_val) / abs(c_val)
                 assert rel_err <= 1e-7, (
                     f"VAL-HAM-04 coordinate gradient mismatch at mu={mu}: "
                     f"computed={c_val:.10e}, FD={e_val:.10e}, rel_err={rel_err:.2e}"
                 )
             else:
+                # For stationary (mu=0) and axisymmetric (mu=3) coordinates, the metric is independent
+                # of x^0 and phi. The central difference calls to hamiltonian_value return identical
+                # values (h_plus == h_minus), evaluating to zero without hardcoding.
                 assert abs(c_val) == 0.0
                 assert abs(e_val) <= 1e-10, (
                     f"Spurious non-zero momentum rate at mu={mu}: {e_val:.2e}"
@@ -484,3 +490,564 @@ class TestHamiltonianInputValidation:
 
         _ = hamiltonian_rhs(state_original, metric)
         np.testing.assert_array_equal(state_original, state_copy)
+
+
+# =============================================================================
+# Stage 2B: Kerr Hamiltonian Verification Suite
+# =============================================================================
+
+def construct_kerr_physical_state(
+    metric: KerrMetric,
+    r: float,
+    theta: float,
+    energy: float,
+    Lz: float,
+    ptheta: float,
+    mu: float = 0.0,
+    radial_direction: str = "inward",
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Constructs a mathematically transparent physical Kerr phase-space state.
+
+    Solves the exact Hamiltonian mass-shell condition:
+        2 * H = g^{mu nu} p_mu p_nu = -mu^2
+    for the radial canonical momentum p_r:
+        g^{rr} p_r^2 = -mu^2 - [g^{tt} p_t^2 + 2 g^{t phi} p_t p_phi + g^{phi phi} p_phi^2 + g^{theta theta} p_theta^2]
+        p_r = sign * sqrt((-mu^2 - V) / g^{rr})
+    where V is the effective potential from the non-radial momenta, and g^{rr} = Delta / Sigma > 0.
+    """
+    sign = -1.0 if radial_direction == "inward" else 1.0
+    pt = -energy
+    pphi = Lz
+
+    g_inv = metric.g_contra(r, theta)
+    V = (
+        g_inv[IDX_X0, IDX_X0] * (pt ** 2)
+        + 2.0 * g_inv[IDX_X0, IDX_PHI] * pt * pphi
+        + g_inv[IDX_PHI, IDX_PHI] * (pphi ** 2)
+        + g_inv[IDX_THETA, IDX_THETA] * (ptheta ** 2)
+    )
+    grr = g_inv[IDX_R, IDX_R]
+    radicand = (-mu ** 2 - V) / grr
+    if radicand < 0.0:
+        raise ValueError(
+            f"Requested parameters are classically forbidden: radicand={radicand:.6e} < 0"
+        )
+    pr = sign * np.sqrt(radicand)
+
+    x = np.array([0.0, r, theta, 0.0], dtype=np.float64)
+    p = np.array([pt, pr, ptheta, pphi], dtype=np.float64)
+    state = np.concatenate([x, p])
+    return x, p, state
+
+
+class TestKerrHamiltonianNormalization:
+    """Stage 2B - A: Verifies Kerr Hamiltonian normalization for null (H=0) and timelike (H=-0.5) states."""
+
+    @pytest.mark.parametrize("mass", [0.5, 1.0, 2.5])
+    @pytest.mark.parametrize("spin_ratio", [-0.9, -0.5, 0.0, 0.5, 0.9, 0.99])
+    @pytest.mark.parametrize("r_over_m", [3.5, 8.0])
+    @pytest.mark.parametrize("theta", [np.pi / 4.0, np.pi / 2.0])
+    @pytest.mark.parametrize("mu,expected_H", [(0.0, 0.0), (1.0, -0.5)])
+    @pytest.mark.parametrize("direction", ["inward", "outward"])
+    def test_kerr_hamiltonian_normalization(
+        self,
+        mass: float,
+        spin_ratio: float,
+        r_over_m: float,
+        theta: float,
+        mu: float,
+        expected_H: float,
+        direction: str,
+    ) -> None:
+        """Verifies H(x, p) = -1/2 * mu^2 to machine precision across diverse Kerr parameters."""
+        spin = spin_ratio * mass
+        metric = KerrMetric(mass=mass, spin=spin)
+        r = r_over_m * mass
+
+        energy = 2.0
+        Lz = 1.5 * mass
+        ptheta = 0.3 * mass
+
+        x, p, state = construct_kerr_physical_state(
+            metric, r, theta, energy=energy, Lz=Lz, ptheta=ptheta, mu=mu, radial_direction=direction
+        )
+
+        h_val = hamiltonian_value(x, p, metric)
+        diff = abs(h_val - expected_H)
+        assert diff <= 1e-14, (
+            f"Normalization failed for M={mass}, a={spin}, mu={mu}, dir={direction}: "
+            f"computed H={h_val:.15e}, expected={expected_H}, diff={diff:.2e}"
+        )
+
+
+class TestKerrCanonicalEquations:
+    """Stage 2B - B: Verifies Kerr canonical equations of motion."""
+
+    @pytest.mark.parametrize("spin", [-0.85, -0.4, 0.0, 0.5, 0.9])
+    @pytest.mark.parametrize("r", [4.0, 10.0])
+    @pytest.mark.parametrize("theta", [np.pi / 6.0, np.pi / 3.0, 2.0 * np.pi / 3.0])
+    def test_kerr_coordinate_velocities(self, spin: float, r: float, theta: float) -> None:
+        """Verifies dot{x}^mu = g^{mu nu} p_nu to machine precision."""
+        metric = KerrMetric(mass=1.0, spin=spin)
+        x = np.array([0.0, r, theta, 0.0], dtype=np.float64)
+        p = np.array([-1.2, 0.4, -0.3, 2.5], dtype=np.float64)
+        state = np.concatenate([x, p])
+
+        rhs = hamiltonian_rhs(state, metric)
+        computed_xdot = rhs[:4]
+
+        g_contra = metric.g_contra(r, theta)
+        expected_xdot = g_contra @ p
+
+        max_err = float(np.max(np.abs(computed_xdot - expected_xdot)))
+        assert max_err <= 1e-15, f"dot{{x}}^mu mismatch: max_err={max_err:.2e}"
+
+    @pytest.mark.parametrize("spin", [-0.8, -0.3, 0.4, 0.85])
+    @pytest.mark.parametrize("r", [4.5, 12.0])
+    @pytest.mark.parametrize("theta", [np.pi / 4.0, np.pi / 2.5])
+    def test_kerr_momentum_equations_against_fd(self, spin: float, r: float, theta: float) -> None:
+        """Verifies dot{p}_mu = -dH/dx^mu against independent central finite differences."""
+        metric = KerrMetric(mass=1.0, spin=spin)
+        x = np.array([0.0, r, theta, 0.0], dtype=np.float64)
+        p = np.array([-1.3, 0.25, -0.35, 3.0], dtype=np.float64)
+        state = np.concatenate([x, p])
+
+        rhs = hamiltonian_rhs(state, metric)
+        p_dot = rhs[4:]
+
+        # Exact stationarity and axisymmetry conservation
+        assert p_dot[0] == 0.0, f"dot{{p}}_t must be exactly zero, got {p_dot[0]}"
+        assert p_dot[3] == 0.0, f"dot{{p}}_phi must be exactly zero, got {p_dot[3]}"
+
+        # Central finite difference comparison for r and theta
+        h_step = 1e-6
+        for mu in [IDX_R, IDX_THETA]:
+            x_plus = x.copy()
+            x_minus = x.copy()
+            x_plus[mu] += h_step
+            x_minus[mu] -= h_step
+
+            h_plus = hamiltonian_value(x_plus, p, metric)
+            h_minus = hamiltonian_value(x_minus, p, metric)
+            fd_dH_dx = (h_plus - h_minus) / (2.0 * h_step)
+            expected_pdot = -fd_dH_dx
+
+            rel_err = abs(p_dot[mu] - expected_pdot) / abs(p_dot[mu])
+            assert rel_err <= 1e-7, (
+                f"Kerr dot{{p}}_{mu} failed FD comparison at r={r}, theta={theta}, a={spin}: "
+                f"computed={p_dot[mu]:.8e}, FD={expected_pdot:.8e}, rel_err={rel_err:.2e}"
+            )
+
+
+class TestKerrHamiltonianSchwarzschildReduction:
+    """Stage 2B - C: Verifies that Kerr with spin a=0 identically matches Schwarzschild."""
+
+    @pytest.mark.parametrize("mass", [0.6, 1.0, 2.5])
+    @pytest.mark.parametrize("r_over_m", [2.5, 4.0, 15.0])
+    @pytest.mark.parametrize("theta", [0.2 * np.pi, 0.5 * np.pi, 0.85 * np.pi])
+    @pytest.mark.parametrize(
+        "p_tuple",
+        [
+            (-1.0, 0.0, 0.0, 2.0),
+            (-1.2, 0.5, -0.3, 3.5),
+            (-0.8, -0.4, 0.6, -2.5),
+        ],
+    )
+    def test_schwarzschild_limit_hamiltonian_and_rhs(
+        self,
+        mass: float,
+        r_over_m: float,
+        theta: float,
+        p_tuple: Tuple[float, float, float, float],
+    ) -> None:
+        """Verifies exact agreement between Kerr(a=0) and SchwarzschildMetric."""
+        schw = SchwarzschildMetric(mass=mass)
+        kerr = KerrMetric(mass=mass, spin=0.0)
+
+        r = r_over_m * mass
+        x = np.array([0.0, r, theta, 0.0], dtype=np.float64)
+        p = np.array(p_tuple, dtype=np.float64)
+        state = np.concatenate([x, p])
+
+        h_schw = hamiltonian_value(x, p, schw)
+        h_kerr = hamiltonian_value(x, p, kerr)
+        h_diff = abs(h_kerr - h_schw)
+        if abs(h_schw) > 1.0:
+            assert h_diff / abs(h_schw) <= 1e-14, f"H relative mismatch: {h_diff / abs(h_schw):.2e}"
+        else:
+            assert h_diff <= 1e-14, f"H absolute mismatch: {h_diff:.2e}"
+
+        rhs_schw = hamiltonian_rhs(state, schw)
+        rhs_kerr = hamiltonian_rhs(state, kerr)
+
+        for i in range(8):
+            diff = abs(rhs_kerr[i] - rhs_schw[i])
+            if abs(rhs_schw[i]) > 1e-12:
+                rel_err = diff / abs(rhs_schw[i])
+                assert rel_err <= 1e-13, f"RHS component {i} rel_err={rel_err:.2e}"
+            else:
+                assert diff <= 1e-13, f"RHS component {i} abs_diff={diff:.2e}"
+
+
+class TestKerrEquatorialSymmetry:
+    """Stage 2B - D: Verifies preservation of equatorial plane theta = pi/2, p_theta = 0."""
+
+    @pytest.mark.parametrize("mass", [1.0, 2.0])
+    @pytest.mark.parametrize("spin_ratio", [-0.95, -0.5, 0.3, 0.8, 0.99])
+    @pytest.mark.parametrize("r_over_m", [2.5, 5.0, 15.0])
+    @pytest.mark.parametrize("pphi", [-3.0, 0.0, 2.5, 4.0])
+    def test_equatorial_plane_preservation(
+        self, mass: float, spin_ratio: float, r_over_m: float, pphi: float
+    ) -> None:
+        """Verifies dot{theta} = 0 and dot{p}_theta = 0 on equatorial plane for all spins."""
+        spin = spin_ratio * mass
+        metric = KerrMetric(mass=mass, spin=spin)
+        r = r_over_m * mass
+        theta = np.pi / 2.0
+        ptheta = 0.0
+        state = np.array([0.0, r, theta, 0.0, -1.2, 0.3, ptheta, pphi], dtype=np.float64)
+
+        rhs = hamiltonian_rhs(state, metric)
+        theta_dot = rhs[IDX_THETA]
+        ptheta_dot = rhs[4 + IDX_THETA]
+
+        assert abs(theta_dot) <= 1e-15, f"dot{{theta}} on equator failed: {theta_dot:.2e}"
+        assert abs(ptheta_dot) <= 1e-14, f"dot{{p}}_theta on equator failed: {ptheta_dot:.2e}"
+
+
+class TestKerrMetricHamiltonianConsistency:
+    """Stage 2B - E: Verifies inverse metric identity and quadratic momentum homogeneity."""
+
+    @pytest.mark.parametrize("spin", [-0.7, 0.6])
+    @pytest.mark.parametrize("r", [4.0, 10.0])
+    @pytest.mark.parametrize("theta", [np.pi / 4.0, np.pi / 2.0])
+    def test_inverse_identity_and_momentum_homogeneity(
+        self, spin: float, r: float, theta: float
+    ) -> None:
+        """Verifies g^{mu alpha} g_{alpha nu} = delta^mu_nu and H(x, lambda p) = lambda^2 H(x, p)."""
+        metric = KerrMetric(mass=1.0, spin=spin)
+
+        # 1. Metric inverse identity
+        g_cov = metric.g_cov(r, theta)
+        g_contra = metric.g_contra(r, theta)
+        prod = g_contra @ g_cov
+        identity_err = float(np.max(np.abs(prod - np.eye(4))))
+        assert identity_err <= 1e-14, f"Metric inverse identity error: {identity_err:.2e}"
+
+        # 2. Quadratic momentum homogeneity
+        x = np.array([0.0, r, theta, 0.0], dtype=np.float64)
+        p = np.array([-1.0, 0.25, -0.3, 2.0], dtype=np.float64)
+        base_h = hamiltonian_value(x, p, metric)
+
+        for lam in [-2.5, 0.3, 1.7, 4.0]:
+            scaled_h = hamiltonian_value(x, lam * p, metric)
+            expected_scaled_h = (lam ** 2) * base_h
+            rel_err = abs(scaled_h - expected_scaled_h) / abs(expected_scaled_h)
+            assert rel_err <= 1e-14, f"Quadratic homogeneity failed for lambda={lam}: rel_err={rel_err:.2e}"
+
+
+class TestKerrConservedQuantities:
+    """Stage 2B - Conserved Quantities: Verifies E = -p_0 and L_z = p_phi helpers and conservation."""
+
+    @pytest.mark.parametrize("p0,pphi", [(-1.5, 3.2), (-0.8, -2.1), (-2.0, 0.0)])
+    def test_conserved_quantities_extraction(self, p0: float, pphi: float) -> None:
+        """Verifies conserved_energy and conserved_angular_momentum for both 4-vector and 8-state."""
+        p = np.array([p0, 0.2, 0.3, pphi], dtype=np.float64)
+        state = np.array([0.0, 5.0, np.pi / 3.0, 0.0, *p], dtype=np.float64)
+
+        # 4-vector
+        assert conserved_energy(p) == -p0
+        assert conserved_angular_momentum(p) == pphi
+
+        # 8-state
+        assert conserved_energy(state) == -p0
+        assert conserved_angular_momentum(state) == pphi
+
+    def test_conserved_quantities_input_validation(self) -> None:
+        """Verifies rejection of invalid shapes and non-finite values."""
+        with pytest.raises(ValueError, match="Input array must have shape"):
+            conserved_energy(np.zeros(5))
+        with pytest.raises(ValueError, match="Input array must have shape"):
+            conserved_angular_momentum(np.zeros(7))
+        with pytest.raises(ValueError, match="contains non-finite values"):
+            conserved_energy(np.array([np.nan, 0.0, 0.0, 1.0]))
+        with pytest.raises(ValueError, match="contains non-finite values"):
+            conserved_angular_momentum(np.array([0.0, 5.0, 1.0, 0.0, -1.0, 0.0, 0.0, np.inf]))
+
+
+class TestKerrFiniteDifferenceDerivativeValidation:
+    """Stage 2B - F: High-accuracy finite-difference validation of analytic metric derivatives."""
+
+    @staticmethod
+    def _fd_4th_order(func: Callable[[float], np.ndarray], x0: float, h: float = 1e-5) -> np.ndarray:
+        """Computes the 4th-order central finite difference of a matrix-valued function:
+
+            f'(x) = (-f(x + 2h) + 8f(x + h) - 8f(x - h) + f(x - 2h)) / (12h) + O(h^4)
+        """
+        f_p2 = func(x0 + 2.0 * h)
+        f_p1 = func(x0 + h)
+        f_m1 = func(x0 - h)
+        f_m2 = func(x0 - 2.0 * h)
+        return (-f_p2 + 8.0 * f_p1 - 8.0 * f_m1 + f_m2) / (12.0 * h)
+
+    @pytest.mark.parametrize("mass", [0.8, 1.0, 2.5])
+    @pytest.mark.parametrize("spin_ratio", [-0.85, -0.4, 0.3, 0.9])
+    @pytest.mark.parametrize("r_over_m", [3.5, 6.0, 15.0])
+    @pytest.mark.parametrize("theta", [0.25 * np.pi, 0.5 * np.pi, 0.75 * np.pi])
+    def test_analytic_radial_and_polar_derivatives_vs_4th_order_fd(
+        self, mass: float, spin_ratio: float, r_over_m: float, theta: float
+    ) -> None:
+        """Verifies analytic partial_r g^{mu nu} and partial_theta g^{mu nu} against 4th-order FD to <= 1e-8."""
+        spin = spin_ratio * mass
+        metric = KerrMetric(mass=mass, spin=spin)
+        r = r_over_m * mass
+
+        # 1. Radial derivatives: partial_r g^{alpha beta}
+        analytic_dg_dr = metric.dg_contra_dr(r, theta)
+        fd_dg_dr = self._fd_4th_order(lambda r_val: metric.g_contra(r_val, theta), r, h=1e-5)
+        max_err_dr = float(np.max(np.abs(analytic_dg_dr - fd_dg_dr)))
+        assert max_err_dr <= 1e-8, (
+            f"Radial derivative mismatch at M={mass}, a={spin}, r={r}, theta={theta}: {max_err_dr:.2e}"
+        )
+
+        # 2. Polar derivatives: partial_theta g^{alpha beta}
+        analytic_dg_dth = metric.dg_contra_dtheta(r, theta)
+        fd_dg_dth = self._fd_4th_order(lambda th_val: metric.g_contra(r, th_val), theta, h=1e-5)
+        max_err_dth = float(np.max(np.abs(analytic_dg_dth - fd_dg_dth)))
+        assert max_err_dth <= 1e-8, (
+            f"Polar derivative mismatch at M={mass}, a={spin}, r={r}, theta={theta}: {max_err_dth:.2e}"
+        )
+
+        # 3. Momentum rate equation consistency:
+        # dot{p}_r = -1/2 * (partial_r g^{alpha beta}) * p_alpha * p_beta
+        # dot{p}_theta = -1/2 * (partial_theta g^{alpha beta}) * p_alpha * p_beta
+        p = np.array([-1.2, 0.35, -0.4, 2.8], dtype=np.float64)
+        state = np.array([0.0, r, theta, 0.0, *p], dtype=np.float64)
+        rhs = hamiltonian_rhs(state, metric)
+
+        expected_pr_dot = -0.5 * np.einsum("ab,a,b->", analytic_dg_dr, p, p)
+        expected_ptheta_dot = -0.5 * np.einsum("ab,a,b->", analytic_dg_dth, p, p)
+
+        assert abs(rhs[4 + IDX_R] - expected_pr_dot) <= 1e-15
+        assert abs(rhs[4 + IDX_THETA] - expected_ptheta_dot) <= 1e-15
+
+
+# =============================================================================
+# Test Suite: Stage 2D (Carter Constant and Separation Constant Diagnostics)
+# =============================================================================
+
+class TestCarterConstant:
+    """Stage 2D: Verification suite for Carter constant and separation constant diagnostics."""
+
+    @pytest.mark.parametrize("spin", [-0.95, -0.5, 0.0, 0.6, 0.99])
+    @pytest.mark.parametrize("theta", [0.1 * np.pi, 0.25 * np.pi, 0.45 * np.pi, 0.7 * np.pi, 0.85 * np.pi])
+    @pytest.mark.parametrize("mu", [0.0, 1.0])
+    @pytest.mark.parametrize("energy", [0.85, 1.05, 1.5])
+    @pytest.mark.parametrize("lz", [-2.5, 0.0, 3.2])
+    def test_carter_polar_algebraic_equivalence(
+        self, spin: float, theta: float, mu: float, energy: float, lz: float
+    ) -> None:
+        """Verifies algebraic equivalence between Q = K - (Lz - a*E)^2 and the explicit theta formula."""
+        metric = KerrMetric(mass=1.0, spin=spin)
+        ptheta = 0.75
+        state = np.array([0.0, 6.0, theta, 0.0, -energy, 0.1, ptheta, lz], dtype=np.float64)
+
+        k_val = carter_separation_constant(state, metric, mu=mu)
+        q_val = carter_constant(state, metric, mu=mu)
+
+        # Expected Q from definition Q = K - (Lz - a*E)^2
+        shift = (lz - (spin * energy)) ** 2
+        assert abs(q_val - (k_val - shift)) <= 1e-14
+
+        # Expected Q from second explicit formula:
+        # Q = p_theta^2 + cos^2(theta) * [a^2 * (mu^2 - E^2) + L_z^2 / sin^2(theta)]
+        sin_th = np.sin(theta)
+        cos_th = np.cos(theta)
+        q_explicit = (ptheta ** 2) + (cos_th ** 2) * (
+            (spin ** 2) * (mu ** 2 - energy ** 2) + (lz ** 2) / (sin_th ** 2)
+        )
+        assert abs(q_val - q_explicit) <= 1e-13
+
+    @pytest.mark.parametrize("spin", [-0.9, -0.5, 0.0, 0.5, 0.95])
+    @pytest.mark.parametrize("r_val", [4.5, 7.0, 12.0])
+    @pytest.mark.parametrize("theta", [0.2 * np.pi, 0.35 * np.pi, 0.65 * np.pi])
+    @pytest.mark.parametrize("mu", [0.0, 1.0])
+    def test_carter_independent_radial_vs_polar_agreement(
+        self, spin: float, r_val: float, theta: float, mu: float
+    ) -> None:
+        """Verifies that independent radial and polar separation constants agree to < 1e-12."""
+        metric = KerrMetric(mass=1.0, spin=spin)
+        x = np.array([0.0, r_val, theta, 0.0], dtype=np.float64)
+        energy = 1.15
+        lz = 2.2
+        ptheta = 0.45
+
+        # Construct physical on-shell state satisfying H(x, p) = -0.5 * mu^2
+        state = kerr_geodesic_initial_state(
+            metric=metric,
+            x=x,
+            energy=energy,
+            Lz=lz,
+            ptheta=ptheta,
+            mu=mu,
+            radial_direction="inward",
+        )
+
+        k_polar = carter_separation_constant(state, metric, mu=mu)
+        k_radial = carter_separation_constant_radial(state, metric, mu=mu)
+        diff_k = abs(k_polar - k_radial)
+        assert diff_k <= 1e-12, f"K mismatch at a={spin}, r={r_val}, theta={theta}, mu={mu}: {diff_k:.2e}"
+
+        q_polar = carter_constant(state, metric, mu=mu)
+        q_radial = carter_constant_radial(state, metric, mu=mu)
+        diff_q = abs(q_polar - q_radial)
+        assert diff_q <= 1e-12, f"Q mismatch at a={spin}, r={r_val}, theta={theta}, mu={mu}: {diff_q:.2e}"
+
+    @pytest.mark.parametrize("spin", [-0.8, -0.2, 0.0, 0.4, 0.9])
+    @pytest.mark.parametrize("mu", [0.0, 1.0])
+    @pytest.mark.parametrize("energy", [0.9, 1.1])
+    @pytest.mark.parametrize("lz", [-3.0, 1.5, 4.0])
+    def test_carter_equatorial_zero(
+        self, spin: float, mu: float, energy: float, lz: float
+    ) -> None:
+        """Verifies Q == 0 identically for equatorial motion (theta = pi/2, p_theta = 0)."""
+        metric = KerrMetric(mass=1.0, spin=spin)
+        state = np.array([0.0, 6.0, 0.5 * np.pi, 0.0, -energy, -0.2, 0.0, lz], dtype=np.float64)
+
+        q_val = carter_constant(state, metric, mu=mu)
+        assert abs(q_val) <= 1e-15, f"Equatorial Q is nonzero: {q_val:.2e}"
+
+        k_val = carter_separation_constant(state, metric, mu=mu)
+        expected_k = (lz - (spin * energy)) ** 2
+        assert abs(k_val - expected_k) <= 1e-14
+
+    @pytest.mark.parametrize("theta", [0.2 * np.pi, 0.35 * np.pi, 0.6 * np.pi, 0.8 * np.pi])
+    @pytest.mark.parametrize("mu", [0.0, 1.0])
+    @pytest.mark.parametrize("energy", [0.95, 1.2])
+    @pytest.mark.parametrize("lz", [-2.0, 2.5])
+    @pytest.mark.parametrize("ptheta", [-0.6, 0.8])
+    def test_carter_schwarzschild_limit(
+        self, theta: float, mu: float, energy: float, lz: float, ptheta: float
+    ) -> None:
+        """In the Schwarzschild limit (a = 0), Q = p_theta^2 + L_z^2 * cot^2(theta) = L^2 - L_z^2."""
+        metric = KerrMetric(mass=1.0, spin=0.0)
+        state = np.array([0.0, 8.0, theta, 0.0, -energy, 0.1, ptheta, lz], dtype=np.float64)
+
+        q_val = carter_constant(state, metric, mu=mu)
+
+        # In spherical symmetry: L^2 = p_theta^2 + L_z^2 / sin^2(theta)
+        # Transverse angular momentum squared: L^2 - L_z^2 = p_theta^2 + L_z^2 * cot^2(theta)
+        sin_th = np.sin(theta)
+        cos_th = np.cos(theta)
+        cot_th = cos_th / sin_th
+        l_total_sq = (ptheta ** 2) + (lz / sin_th) ** 2
+        expected_q = l_total_sq - (lz ** 2)
+        expected_q_cot = (ptheta ** 2) + (lz * cot_th) ** 2
+
+        assert abs(q_val - expected_q) <= 1e-14
+        assert abs(q_val - expected_q_cot) <= 1e-14
+
+    @pytest.mark.parametrize("spin_mag", [0.25, 0.65, 0.9])
+    @pytest.mark.parametrize("mu", [0.0, 1.0])
+    @pytest.mark.parametrize("theta", [0.3 * np.pi, 0.7 * np.pi])
+    def test_carter_spin_sign_symmetry(
+        self, spin_mag: float, mu: float, theta: float
+    ) -> None:
+        """At fixed phase space (x, p), Q(+a) == Q(-a) because a enters only as a^2 in the polar formula."""
+        m_pos = KerrMetric(mass=1.0, spin=spin_mag)
+        m_neg = KerrMetric(mass=1.0, spin=-spin_mag)
+        state = np.array([0.0, 7.0, theta, 0.0, -1.1, 0.2, 0.5, 2.0], dtype=np.float64)
+
+        q_pos = carter_constant(state, m_pos, mu=mu)
+        q_neg = carter_constant(state, m_neg, mu=mu)
+        assert abs(q_pos - q_neg) <= 1e-14
+
+        # Note that K contains the linear cross-term -2*a*E*Lz, so K(+a) != K(-a) in general
+        k_pos = carter_separation_constant(state, m_pos, mu=mu)
+        k_neg = carter_separation_constant(state, m_neg, mu=mu)
+        # Difference in K is (Lz - aE)^2 - (Lz + aE)^2 = -4*a*E*Lz
+        expected_diff_k = -4.0 * spin_mag * 1.1 * 2.0
+        assert abs((k_pos - k_neg) - expected_diff_k) <= 1e-14
+
+    def test_carter_vectorized_2d_input(self) -> None:
+        """Verifies that 2D state arrays (N, 8) evaluate consistently with row-by-row 1D evaluation."""
+        metric = KerrMetric(mass=1.0, spin=0.7)
+        states = []
+        for i in range(5):
+            th = 0.2 * np.pi + i * 0.1 * np.pi
+            r = 6.0 + i * 1.5
+            s = np.array([0.0, r, th, 0.0, -1.05, 0.1 * (i + 1), 0.3 * (i - 2), 2.1], dtype=np.float64)
+            states.append(s)
+        states_arr = np.array(states)
+
+        q_1d = np.array([carter_constant(s, metric, mu=1.0) for s in states])
+        q_2d = carter_constant(states_arr, metric, mu=1.0)
+        assert isinstance(q_2d, np.ndarray)
+        assert q_2d.shape == (5,)
+        assert np.allclose(q_1d, q_2d, atol=1e-15, rtol=1e-15)
+
+        k_1d = np.array([carter_separation_constant(s, metric, mu=1.0) for s in states])
+        k_2d = carter_separation_constant(states_arr, metric, mu=1.0)
+        assert np.allclose(k_1d, k_2d, atol=1e-15, rtol=1e-15)
+
+        k_rad_1d = np.array([carter_separation_constant_radial(s, metric, mu=1.0) for s in states])
+        k_rad_2d = carter_separation_constant_radial(states_arr, metric, mu=1.0)
+        assert np.allclose(k_rad_1d, k_rad_2d, atol=1e-15, rtol=1e-15)
+
+        q_rad_1d = np.array([carter_constant_radial(s, metric, mu=1.0) for s in states])
+        q_rad_2d = carter_constant_radial(states_arr, metric, mu=1.0)
+        assert np.allclose(q_rad_1d, q_rad_2d, atol=1e-15, rtol=1e-15)
+
+    def test_carter_input_validation_and_singularities(self) -> None:
+        """Verifies fail-fast error handling for invalid metric types, shapes, mu, and singular coordinates."""
+        metric = KerrMetric(mass=1.0, spin=0.7)
+        valid_state = np.array([0.0, 6.0, 0.3 * np.pi, 0.0, -1.0, 0.0, 0.5, 2.0], dtype=np.float64)
+
+        # 1. Invalid metric type
+        schwarz = SchwarzschildMetric(mass=1.0)
+        with pytest.raises(TypeError, match="metric must be an instance of KerrMetric"):
+            carter_constant(valid_state, schwarz)  # type: ignore
+
+        # 2. Invalid mu parameter
+        with pytest.raises(ValueError, match="Rest mass parameter mu must be a non-negative finite float"):
+            carter_constant(valid_state, metric, mu=-0.5)
+        with pytest.raises(ValueError, match="Rest mass parameter mu must be a non-negative finite float"):
+            carter_constant(valid_state, metric, mu=np.nan)
+        with pytest.raises(ValueError, match="Rest mass parameter mu must be a non-negative finite float"):
+            carter_constant(valid_state, metric, mu=True)  # type: ignore
+
+        # 3. Invalid state shapes
+        with pytest.raises(ValueError, match="1D state array must have shape"):
+            carter_constant(np.zeros(7), metric)
+        with pytest.raises(ValueError, match="2D state array must have shape"):
+            carter_constant(np.zeros((3, 7)), metric)
+        with pytest.raises(ValueError, match="State array must be 1D"):
+            carter_constant(np.zeros((2, 2, 8)), metric)
+
+        # 4. Non-finite values
+        state_nan = valid_state.copy()
+        state_nan[4] = np.nan
+        with pytest.raises(ValueError, match="contains non-finite values"):
+            carter_constant(state_nan, metric)
+
+        # 5. Polar coordinate singularities (theta <= 0 or theta >= pi)
+        state_theta_zero = valid_state.copy()
+        state_theta_zero[IDX_THETA] = 0.0
+        with pytest.raises(ValueError, match="theta must lie strictly in"):
+            carter_constant(state_theta_zero, metric)
+
+        state_theta_pi = valid_state.copy()
+        state_theta_pi[IDX_THETA] = np.pi
+        with pytest.raises(ValueError, match="theta must lie strictly in"):
+            carter_constant(state_theta_pi, metric)
+
+        # 6. Radial coordinate singularity in radial evaluator (r <= r_+)
+        state_horizon = valid_state.copy()
+        state_horizon[IDX_R] = metric.horizon_radius
+        with pytest.raises(ValueError, match="Radial coordinate r must be strictly outside"):
+            carter_separation_constant_radial(state_horizon, metric)
+
+        state_inside = valid_state.copy()
+        state_inside[IDX_R] = metric.horizon_radius - 0.1
+        with pytest.raises(ValueError, match="Radial coordinate r must be strictly outside"):
+            carter_separation_constant_radial(state_inside, metric)

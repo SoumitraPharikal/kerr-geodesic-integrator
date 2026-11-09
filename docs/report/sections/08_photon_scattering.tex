@@ -1,0 +1,71 @@
+\section{Photon Capture, Scattering and Critical Trajectories}
+\label{sec:photon_scattering}
+
+\subsection{Equatorial Circular Photon Orbits and Critical Impact Parameters}
+In the equatorial plane ($\theta = \pi/2, p_\theta = 0$), null geodesics ($\mu = 0$) are characterized by the single signed impact parameter $b \equiv L_z/E$. The radial equation of motion \eqref{eq:radial_potential_R} reduces to:
+\begin{equation}
+    \left(\frac{dr}{d\lambda}\right)^2 = \frac{R(r)}{r^4} = E^2 \left[ \left(1 + \frac{a^2}{r^2} - \frac{ab}{r^2}\right)^2 - \frac{\Delta}{r^4} (b - a)^2 \right].
+    \label{eq:equatorial_null_radial}
+\end{equation}
+Circular photon orbits satisfy the simultaneous conditions $R(r) = 0$ and $R'(r) = 0$. Solving these algebraic relations yields the exact radii for prograde ($r_{\rm ph}^+$) and retrograde ($r_{\rm ph}^-$) equatorial circular photon orbits \cite{Bardeen1973}:
+\begin{equation}
+    r_{\rm ph}^\pm(a) = 2M \left[ 1 + \cos\left(\frac{2}{3}\arccos\left(\mp \frac{a}{M}\right)\right) \right].
+    \label{eq:kerr_photon_orbit_radii}
+\end{equation}
+In the Schwarzschild limit ($a = 0$), $r_{\rm ph}^\pm = 3M$. For extremal Kerr ($a = M$), the prograde circular photon orbit coalesces with the horizon at $r_{\rm ph}^+ = M$, while the retrograde orbit moves out to $r_{\rm ph}^- = 4M$.
+
+The corresponding critical impact parameters separating scattering from capture are determined separately for prograde and retrograde equatorial photon orbits:
+\begin{align}
+    b_{\rm crit}^{\rm pro}(a) &= -a + 3\sqrt{M r_{\rm ph}^+} = a + \frac{(r_{\rm ph}^+)^{3/2}}{\sqrt{M}}, \label{eq:b_crit_pro} \\
+    b_{\rm crit}^{\rm retro}(a) &= -a - 3\sqrt{M r_{\rm ph}^-} = a - \frac{(r_{\rm ph}^-)^{3/2}}{\sqrt{M}}. \label{eq:b_crit_retro}
+\end{align}
+In the Schwarzschild limit ($a = 0$), $r_{\rm ph}^\pm = 3M$, giving $b_{\rm crit}^{\rm pro} = +3\sqrt{3}M \approx +5.196152M$ and $b_{\rm crit}^{\rm retro} = -3\sqrt{3}M \approx -5.196152M$. For intermediate Kerr ($a = 0.5M$), $r_{\rm ph}^+ \approx 2.347296M$ and $r_{\rm ph}^- \approx 3.532089M$, yielding $b_{\rm crit}^{\rm pro} \approx 4.096267M$ (prograde) and $b_{\rm crit}^{\rm retro} \approx -6.138156M$ (retrograde). For extremal Kerr ($a = M$), $r_{\rm ph}^+ = M$ and $r_{\rm ph}^- = 4M$, giving $b_{\rm crit}^{\rm pro} = 2M$ and $b_{\rm crit}^{\rm retro} = -7M$. Under the Bardeen observer screen convention $\alpha = -b/\sin\theta_o$ at equatorial inclination $\theta_o = \pi/2$, these correspond to screen boundary positions $\alpha_{\rm pro} = -b_{\rm crit}^{\rm pro} \approx -4.096M$ and $\alpha_{\rm retro} = -b_{\rm crit}^{\rm retro} \approx +6.138M$ (cf.~Table~\ref{tab:shadow_observables}).
+
+\subsection{Cubic Potential Analysis and Turning-Point Roots}
+Factoring out $E^2$, the radial equation can be expressed as:
+\begin{equation}
+    \left(\frac{dr}{d\lambda}\right)^2 = \frac{E^2}{r^3} \mathcal{P}_3(r; b),
+\end{equation}
+where $\mathcal{P}_3(r; b) \equiv r^3 - (b^2 - a^2)r + 2M(b - a)^2$ is a real cubic polynomial. The roots of $\mathcal{P}_3(r; b) = 0$ determine the turning points of photon trajectories:
+\begin{itemize}
+    \item \textbf{Captured Trajectories ($b_{\rm crit}^{\rm retro} < b < b_{\rm crit}^{\rm pro}$):}  
+    $\mathcal{P}_3(r; b)$ has no real roots outside the event horizon $r_+$. Inflowing photons experience no radial turning points and are inexorably captured, plunging through the horizon. For $a = 0.5M$, this corresponds to the asymmetric capture window $-6.138M < b < 4.096M$.
+    \item \textbf{Scattered Trajectories ($b > b_{\rm crit}^{\rm pro}$ or $b < b_{\rm crit}^{\rm retro}$):}  
+    $\mathcal{P}_3(r; b)$ has two distinct positive real roots $r_{\rm peri} > r_{\rm apo}$ outside the horizon. An incoming photon from infinity encounters a periapsis turning point at $r_{\rm peri} > r_{\rm ph}$, where $p_r = 0$, and scatters back to spatial infinity.
+    \item \textbf{Critical Separatrices ($b = b_{\rm crit}^{\rm pro}$ or $b = b_{\rm crit}^{\rm retro}$):}  
+    $\mathcal{P}_3(r; b)$ develops an unstable double real root at $r = r_{\rm ph}^\pm$, representing separatrix orbits where photons orbit asymptotically indefinitely.
+\end{itemize}
+
+\subsection{Logarithmic Affine Dwell Length Scaling}
+For trajectories near the critical separatrix, we define the dimensionless fractional impact-parameter excess:
+\begin{equation}
+    \delta \equiv \frac{b - b_{\rm crit}}{b_{\rm crit}}, \qquad 0 < \delta \ll 1,
+    \label{eq:delta_fractional_excess}
+\end{equation}
+where $\delta > 0$ characterizes scattered rays that penetrate deep into the strong-field photon region before turning around. Incoming photons undergo multiple orbital revolutions near $r_{\rm ph}$ before scattering back to spatial infinity, a hallmark of strong-field relativistic deflection \cite{Bozza2002}.
+
+Expanding the radial polynomial $\mathcal{P}_3(r; b)$ about the unstable double root $r = r_{\rm ph}$ and $b = b_{\rm crit}$:
+\begin{equation}
+    \mathcal{P}_3(r; b) \approx \frac{1}{2} \mathcal{P}_3''(r_{\rm ph})(r - r_{\rm ph})^2 + \left.\frac{\partial\mathcal{P}_3}{\partial b}\right|_{(r_{\rm ph}, b_{\rm crit})} b_{\rm crit} \delta = 3 r_{\rm ph} (r - r_{\rm ph})^2 - C_0 \delta,
+\end{equation}
+where $\mathcal{P}_3''(r) = 6r$ evaluates to $6r_{\rm ph}$, and $C_0 \equiv -\left.\frac{\partial\mathcal{P}_3}{\partial b}\right|_{r_{\rm ph}} b_{\rm crit} > 0$. The periapsis turning point occurs where $\mathcal{P}_3 = 0$:
+\begin{equation}
+    r_{\rm peri} - r_{\rm ph} = \sqrt{\frac{C_0 \delta}{3r_{\rm ph}}} \propto \sqrt{\delta}.
+\end{equation}
+The total affine dwell length for a complete two-way scattering trajectory---integrating along the inward leg from an exterior radius $r_0 \gg r_{\rm ph}$ down to periapsis $r_{\rm peri}$, and along the outward leg from $r_{\rm peri}$ back to $r_0$---is:
+\begin{align}
+    \lambda_{\rm dwell}(\delta) &= 2 \int_{r_{\rm peri}}^{r_0} \frac{r^{3/2} dr}{E \sqrt{\mathcal{P}_3(r; b)}} \approx \frac{2 r_{\rm ph}^{3/2}}{E \sqrt{3r_{\rm ph}}} \int_{r_{\rm peri}}^{r_0} \frac{dr}{\sqrt{(r - r_{\rm ph})^2 - (r_{\rm peri} - r_{\rm ph})^2}} \nonumber \\
+    &= \frac{2 r_{\rm ph}}{\sqrt{3}E} \left[ -\ln(r_{\rm peri} - r_{\rm ph}) + \ln(2(r_0 - r_{\rm ph})) + \mathcal{O}(\delta) \right].
+\end{align}
+Because the radial turning-point displacement satisfies $\ln(r_{\rm peri} - r_{\rm ph}) = \frac{1}{2}\ln\delta + \frac{1}{2}\ln(C_0 / 3r_{\rm ph})$, the factor of $1/2$ from the square root $\sqrt{\delta}$ exactly cancels the factor of $2$ from the two symmetric legs of the trajectory:
+\begin{equation}
+    \lambda_{\rm dwell}(\delta) = -\frac{r_{\rm ph}^{3/2}}{E\sqrt{\frac{1}{2}\mathcal{P}_3''(r_{\rm ph})}} \ln(\delta) + \text{constant} + \mathcal{O}(\delta) = -\frac{r_{\rm ph}}{\sqrt{3}E} \ln(\delta) + \text{constant} + \mathcal{O}(\delta).
+    \label{eq:logarithmic_dwell_scaling}
+\end{equation}
+\noindent \textbf{Clarification of Conventions:}
+\begin{enumerate}[label=(\roman*)]
+    \item \textbf{One-Way Inward Leg:} For a one-way inward trajectory from $r_0$ to periapsis $r_{\rm peri}$, the affine span is $\Delta\lambda_{\rm in} = \frac{1}{2}\lambda_{\rm dwell} = -\frac{r_{\rm ph}}{2\sqrt{3}E}\ln\delta + \mathcal{O}(1)$.
+    \item \textbf{Two-Way Round-Trip:} For the complete scattering trajectory (inward from $r_0$ to $r_{\rm peri}$ and outward to $r_0$), the prefactor is $-r_{\rm ph}/(\sqrt{3}E)$ as given in \eqref{eq:logarithmic_dwell_scaling}.
+    \item \textbf{Radial Turning-Point Coordinate Displacement:} If parameterized directly in terms of coordinate turning-point displacement $\delta_r \equiv r_{\rm peri} - r_{\rm ph}$, $\ln\delta_r$ carries no $1/2$ factor, giving slope $-\frac{r_{\rm ph}}{\sqrt{3}E}\ln\delta_r$ for one leg and $-\frac{2r_{\rm ph}}{\sqrt{3}E}\ln\delta_r$ for the round trip.
+\end{enumerate}
+Numerical integration across four decades of $\delta \in [10^{-2}, 10^{-6}]$ confirms the round-trip prefactor $-r_{\rm ph}/(\sqrt{3}E)$ to relative accuracy $< 10^{-4}$, establishing the integrity of the adaptive step-size controller in dwelling regimes.

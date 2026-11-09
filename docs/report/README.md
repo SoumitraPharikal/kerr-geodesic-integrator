@@ -1,0 +1,116 @@
+# Kerr Geodesic Integrator — Technical Report
+
+This directory contains the complete, editable, publication-quality \LaTeX{} technical report documenting the theoretical foundations, numerical methods, physical benchmarks, and scientific results of the **Kerr Geodesic Integrator** project.
+
+The canonical compiled document is available directly as [Kerr_Geodesic_Integrator_Report.pdf](Kerr_Geodesic_Integrator_Report.pdf) (41 pages, publication-ready).
+
+---
+
+## 1. Directory Structure
+
+```text
+docs/report/
+├── Kerr_Geodesic_Integrator_Report.pdf # Final compiled 41-page technical report
+├── main.tex                           # Master LaTeX document with documentclass, preamble, and author block
+├── references.bib                     # Verified academic BibTeX bibliography (23 verified citations)
+├── README.md                          # Compilation and Overleaf import instructions (this file)
+├── sections/                          # Modular chapter source files
+│   ├── 01_introduction.tex
+│   ├── 02_kerr_spacetime.tex
+│   ├── 03_hamiltonian_dynamics.tex
+│   ├── 04_numerical_architecture.tex
+│   ├── 05_conserved_quantities.tex
+│   ├── 06_schwarzschild_validation.tex
+│   ├── 07_kerr_physical_orbits.tex
+│   ├── 08_photon_scattering.tex
+│   ├── 09_shadow_construction.tex
+│   ├── 10_extremal_nhek_and_polar.tex
+│   ├── 11_near_polar_asymptotics.tex
+│   ├── 12_numerical_error_analysis.tex
+│   ├── 13_results_discussion.tex
+│   ├── 14_limitations_future_work.tex
+│   └── 15_conclusions.tex
+├── figures/                           # Vector PDF and high-resolution PNG figures
+│   ├── exact_polar_shadow.pdf / .png
+│   ├── kerr_shadow_a05.pdf / .png
+│   ├── kerr_shadow_a09.pdf / .png
+│   ├── kerr_shadow_extremal.pdf / .png
+│   ├── kerr_shadow_inclination_comparison.pdf / .png
+│   ├── schwarzschild_shadow.pdf / .png
+│   └── shadow_convergence.pdf
+└── scripts/                           # Reproducibility and automated compilation scripts
+    ├── calculate_observables.py       # High-precision shadow observables calculator
+    ├── compile_report.py              # Cross-platform automated LaTeX compiler and PDF verifier
+    └── convergence_study.py           # Polygonal area and perimeter Euler--Maclaurin convergence audit
+```
+
+---
+
+## 2. Author and Affiliation Information
+
+Author metadata configured in `main.tex`:
+
+- **Author:** Soumitra Pharikal
+- **Email:** `24123@iiserbpr.ac.in`
+- **Affiliation:** Indian Institute of Science Education and Research Berhampur (IISER Berhampur), India
+- **Repository:** [https://github.com/SoumitraPharikal/kerr-geodesic-integrator](https://github.com/SoumitraPharikal/kerr-geodesic-integrator)
+
+---
+
+## 3. How to Compile
+
+### Option A: Automated Python Compilation (Cross-Platform)
+The recommended compilation method automatically detects your local TeX distribution (`pdflatex` and `bibtex` on PATH, TeX Live, or MiKTeX), performs the four required compilation passes, synchronizes bibliography citations, verifies page count, and updates `Kerr_Geodesic_Integrator_Report.pdf`:
+```bash
+python docs/report/scripts/compile_report.py
+```
+
+### Option B: Overleaf (Recommended for Cloud Collaboration)
+1. Zip the `docs/report/` folder:
+   ```bash
+   zip -r kerr_geodesic_report.zip docs/report/*
+   ```
+2. Log in to [Overleaf](https://www.overleaf.com/).
+3. Click **New Project** $\to$ **Upload Project**, and upload `kerr_geodesic_report.zip`.
+4. Ensure the main document is set to `main.tex` and compiler is set to **pdfLaTeX** or **LuaLaTeX**.
+5. Click **Recompile**.
+
+### Option C: Local Compilation on Linux / macOS
+Prerequisites: A standard TeX Live or MacTeX installation (`texlive-latex-recommended`, `texlive-latex-extra`, `texlive-science`, `texlive-fonts-recommended`).
+
+Using `latexmk` (automatic multi-pass build):
+```bash
+cd docs/report
+latexmk -pdf main.tex
+cp main.pdf Kerr_Geodesic_Integrator_Report.pdf
+```
+
+Using manual `pdflatex`:
+```bash
+cd docs/report
+pdflatex main.tex
+bibtex main
+pdflatex main.tex
+pdflatex main.tex
+cp main.pdf Kerr_Geodesic_Integrator_Report.pdf
+```
+
+---
+
+## 4. Package Dependencies
+All packages utilized in `main.tex` are standard, open-source packages included in TeX Live and Overleaf by default:
+- `amsmath`, `amssymb`, `amsfonts`, `amsthm`, `mathtools` (AMS mathematical typography)
+- `geometry` (page margins: 2.8 cm top/bottom, 2.5 cm left/right on A4 paper)
+- `booktabs`, `tabularx`, `multirow`, `array` (publication-quality tables)
+- `graphicx` (figure rendering with relative path `figures/`)
+- `hyperref` (hyperlinks and PDF metadata)
+- `cite` (bracketed numeric citations)
+- `cleveref` (context-aware cross-referencing: `\Cref{sec:...}`)
+- `physics` (mathematical physics notation: `\dd`, `\pdv`)
+- `microtype`, `caption` (microtypography and caption styling)
+
+---
+
+## 5. Figures and Datasets
+The vector PDF figures embedded in the report are self-contained in `docs/report/figures/` and match the scientific deliverables generated by `tools/generate_shadow_deliverables.py`. Both PDF (vector) and PNG (raster) formats are provided to ensure seamless compilation across diverse TeX engines.
+The vector PDF figures embedded in the report are self-contained in `docs/report/figures/` and match the scientific deliverables generated by `tools/generate_shadow_deliverables.py`. Both PDF (vector) and PNG (raster) formats are provided to ensure seamless compilation across diverse TeX engines.

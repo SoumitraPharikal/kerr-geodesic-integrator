@@ -13,10 +13,16 @@ from geodesics.constants import COORDINATE_NAMES, SPACETIME_DIMENSION
 
 
 class SpacetimeMetric(ABC):
-    """Abstract base class defining the interface for spacetime metrics.
+    """Abstract base class defining the interface for stationary, axisymmetric spacetime metrics.
+
+    The protocol assumes 4D spacetimes admitting a stationary Killing vector
+    xi = partial_{x^0} and an axial Killing vector psi = partial_phi, such that
+    metric components and their contravariant derivatives depend only on the
+    coordinates (r, theta) in coordinates adapted to these symmetries.
 
     All metric implementations must adhere to:
     - Coordinate ordering: x^mu = (x0, r, theta, phi) where x0 = ct.
+    - Symmetries: Stationary (partial_0 g = 0) and axisymmetric (partial_phi g = 0).
     - Geometrized units: G = c = 1.
     - Metric signature: (-, +, +, +).
     - Array dimensions: (4, 4) for rank-2 tensors, (4, 4, 4) for derivatives.

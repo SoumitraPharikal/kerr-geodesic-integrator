@@ -224,6 +224,7 @@ class TestInputValidation:
         assert metric.horizon_radius == 2.0
         assert metric.photon_sphere_radius == 3.0
         assert np.isclose(metric.critical_impact_parameter, 3.0 * np.sqrt(3.0))
+        assert metric.isco_radius == 6.0
 
     def test_custom_positive_mass(self):
         """Checks initialization with custom positive mass."""
@@ -232,6 +233,7 @@ class TestInputValidation:
         assert metric.horizon_radius == 9.0
         assert metric.photon_sphere_radius == 13.5
         assert np.isclose(metric.critical_impact_parameter, 13.5 * np.sqrt(3.0))
+        assert metric.isco_radius == 27.0
 
     @pytest.mark.parametrize("invalid_mass", [0.0, -1.0, -1e-6, np.nan, np.inf, -np.inf])
     def test_rejection_of_invalid_mass(self, invalid_mass: float):

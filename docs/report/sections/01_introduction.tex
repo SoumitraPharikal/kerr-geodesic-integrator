@@ -1,0 +1,66 @@
+\section{Introduction and Scientific Motivation}
+\label{sec:introduction}
+
+\subsection{Astrophysical Context and Conceptual Foundations}
+The observational confirmation of black holes in general relativity represents one of the foundational triumphs of modern physics. Following the direct imaging of the supermassive black holes in the galaxy Messier 87 ($\text{M87}^*$) \cite{EHT2019_PaperI} and at the center of the Milky Way, Sagittarius A* ($\text{Sgr A}^*$) \cite{EHT2022_PaperI}, by the Event Horizon Telescope (EHT) Collaboration, relativistic ray-tracing and geometric shadow reconstruction have evolved from abstract theoretical gedankenexperiments into indispensable empirical tools for probing strong-field gravitation.
+
+In general relativity, an uncharged, stationary, axisymmetric rotating black hole in vacuum is uniquely described by the Kerr metric \cite{Kerr1963}, parameterized entirely by its gravitational mass $M$ and spin angular momentum per unit mass $a \equiv J/M$. A black hole's event horizon marks a causal one-way membrane from which no signals or particles can escape to asymptotic infinity. Surrounding the horizon of a rotating black hole is the ergosphere, a region where spacetime frame-dragging is so intense that no physical observer can remain stationary relative to infinity.
+
+Freely falling test particles and light rays traverse the curved spacetime along \textit{geodesics}---the four-dimensional curved-spacetime generalization of straight lines. A geodesic path $x^\mu(\lambda)$ parameterized by an affine parameter $\lambda$ satisfies the geodesic equation:
+\begin{equation}
+    \frac{d^2 x^\mu}{d\lambda^2} + \Gamma^\mu_{\alpha\beta} \frac{dx^\alpha}{d\lambda} \frac{dx^\beta}{d\lambda} = 0,
+    \label{eq:geodesic_standard}
+\end{equation}
+where $\Gamma^\mu_{\alpha\beta}$ are the Christoffel connections. The magnitude of the four-velocity $u^\mu = dx^\mu/d\lambda$ defines the invariant dispersion relation:
+\begin{equation}
+    g_{\mu\nu} \frac{dx^\mu}{d\lambda} \frac{dx^\nu}{d\lambda} = -\mu^2,
+    \label{eq:dispersion_intro}
+\end{equation}
+where $\mu = 0$ corresponds to massless particles (photons tracing null geodesics along the light cone) and $\mu > 0$ corresponds to massive particles (timelike geodesics, typically normalized such that $\mu = 1$ and $\lambda$ represents proper time per unit rest mass).
+
+\subsection{Symmetries, Conserved Quantities, and the Role of Numerical Integration}
+As established by Carter \cite{Carter1968}, geodesic motion in Kerr spacetime possesses a hidden dynamical symmetry: the presence of a non-trivial fourth constant of the motion, the Carter constant $\mathcal{Q}$, whose underlying irreducible second-rank Killing tensor $K_{\mu\nu}$ was subsequently identified by Walker and Penrose \cite{WalkerPenrose1970}. Together with the particle rest mass $\mu$, the conserved energy $E = -p_t$ (associated with stationarity via the timelike Killing vector $\partial_t$), and the axial angular momentum $L_z = p_\phi$ (associated with axisymmetry via the rotational Killing vector $\partial_\phi$), Carter's invariant decouples the Hamilton--Jacobi equation, rendering Kerr geodesic equations formally integrable in terms of elliptic integrals \cite{Chandrasekhar1983,Bardeen1973}.
+
+Despite this formal mathematical integrability, direct numerical integration of the geodesic differential equations remains essential for scientific research:
+\begin{enumerate}[label=(\roman*)]
+    \item \textbf{Astrophysical Complexity:} Real black-hole environments involve magnetohydrodynamic accretion disks, radiative transfer, non-integrable spacetime perturbations, and structured emitting media \cite{Falcke2000,Luminet1979,CunninghamBardeen1973,Chael2021}, where analytical expressions cannot capture local interactions.
+    \item \textbf{Camera-Plane Ray Tracing:} Generating synthetic black-hole images requires backward ray-tracing millions of null rays from pixel grids on a distant observer's camera to their emission origins, demanding efficient step-by-step numerical propagation.
+    \item \textbf{Numerical Robustness:} Evaluating incomplete elliptic integrals and Jacobian elliptic functions across radial and polar turning points can encounter loss of significance and coordinate branch-cut ambiguities that direct numerical ODE integration avoids.
+\end{enumerate}
+
+\subsection{Hamiltonian Formulation and Methodological Distinctions}
+Rather than integrating the second-order geodesic equations \eqref{eq:geodesic_standard} directly via Christoffel symbols, this framework adopts a canonical Hamiltonian formulation in eight-dimensional phase space $(x^\mu, p_\mu)$. The canonical Hamiltonian:
+\begin{equation}
+    \mathcal{H}(x^\mu, p_\mu) = \frac{1}{2} g^{\mu\nu}(x) p_\mu p_\nu
+    \label{eq:hamiltonian_intro}
+\end{equation}
+yields a system of first-order Hamilton equations. This formulation offers significant computational advantages:
+\begin{itemize}
+    \item \textbf{Direct Momentum Conservation:} Metric symmetries manifest algebraically: because $\partial_t g^{\mu\nu} = 0$ and $\partial_\phi g^{\mu\nu} = 0$, the canonical equations $\dot{p}_t = -\partial\mathcal{H}/\partial t = 0$ and $\dot{p}_\phi = -\partial\mathcal{H}/\partial\phi = 0$ guarantee that $E$ and $L_z$ are preserved automatically up to floating-point round-off.
+    \item \textbf{Elimination of Christoffel Symbols:} Equations of motion require only the analytical derivatives of the inverse metric components $\partial_i g^{\mu\nu}$, bypassing the 40 distinct connection coefficients of the Kerr metric.
+    \item \textbf{Continuous Constraint Monitoring:} The value of $2\mathcal{H}$ serves as an independent, continuous monitor of numerical drift away from the null ($2\mathcal{H} = 0$) or timelike ($2\mathcal{H} = -1$) constraint surface.
+\end{itemize}
+
+\paragraph{Numerical Method Clarification:} We emphasize that the numerical solver implemented in this project is an \textit{adaptive explicit Runge--Kutta} method of Dormand--Prince 8(5,3) type (DOP853) equipped with continuous polynomial dense output, rather than a geometric \textit{symplectic} integrator. Standard explicit Runge--Kutta schemes are not symplectic. Instead of relying on symplectic geometry to bound phase-space volume, our framework achieves high-precision Hamiltonian constraint preservation ($|2\mathcal{H}| \le 10^{-12}$) through eighth-order local truncation error control, scale-invariant step-size adaptation, and active monitoring of the normalized Hamiltonian residual.
+
+\subsection{The Black Hole Shadow and Celestial Bardeen Coordinates}
+A prominent astrophysical observable modeled in this work is the black-hole shadow. When a black hole is illuminated by background or surrounding emission, photons that pass sufficiently close to the horizon are captured, creating a central region of darkness on the observer's sky bounded by a sharp silhouette \cite{Bardeen1973,Falcke2000,PerlickTsupko2022}. The boundary of this shadow corresponds to the critical trajectories that asymptotically separate capture from scattering to infinity, delineated in phase space by unstable spherical photon orbits at constant Boyer--Lindquist radius.
+
+To describe the shadow quantitatively, an asymptotic observer situated at polar inclination $\theta_o$ projects the incoming null rays onto an imaginary celestial screen perpendicular to the line of sight. Following Bardeen \cite{Bardeen1973}, this plane is parameterized by Cartesian impact coordinates $(\alpha, \beta)$:
+\begin{itemize}
+    \item $\alpha$ represents the horizontal displacement perpendicular to the projected black-hole spin axis, measuring the impact parameter associated with frame-dragging and axial angular momentum ($L_z$).
+    \item $\beta$ represents the vertical displacement parallel to the projected spin axis, measuring the impact parameter associated with latitudinal motion and Carter's constant ($\mathcal{Q}$).
+\end{itemize}
+
+\subsection{Project Scope and Document Organization}
+This report documents the \textsc{Kerr Geodesic Integrator}, a Python-based computational framework developed to address these relativistic challenges. Specifically, the project investigates:
+\begin{enumerate}[label=(\roman*)]
+    \item Scale-invariant canonical phase-space propagation with adaptive step-size selection and sub-epsilon event root-finding (horizon cutoff, turning points, spatial escape).
+    \item Independent dual-representation monitoring of Carter's constant ($\mathcal{Q}_{\rm polar}$ vs. $\mathcal{Q}_{\rm radial}$).
+    \item Physical validation against known relativistic benchmarks: Schwarzschild photon spheres, circular orbits at the innermost stable circular orbit (ISCO), epicyclic frequencies, and critical photon scattering dwell times.
+    \item Celestial Bardeen shadow boundary construction across spins $0 \le |a| \le M$ and inclinations $0 \le \theta_o \le \pi$, including the Near-Horizon Extreme Kerr (NHEK) vertical segment and exact-polar circular boundaries.
+    \item Near-polar asymptotic perturbation expansions, proving the first-order invariance of shadow perimeter and curvature functionals.
+    \item Rigorous convergence analysis of discrete polygonal boundary approximations against continuum references.
+\end{enumerate}
+
+The remainder of this paper is structured as follows: \Cref{sec:kerr_spacetime} presents the Boyer--Lindquist geometry and exact metric derivatives. \Cref{sec:hamiltonian_dynamics} develops the canonical Hamiltonian formulation and Carter invariants. \Cref{sec:numerical_architecture} details the integration architecture and dense-output event localization. \Cref{sec:conserved_quantities} establishes the scale-invariant conservation diagnostics. \Cref{sec:schwarzschild_validation,sec:kerr_physical_orbits,sec:photon_scattering} present the benchmark validation suite. \Cref{sec:shadow_construction,sec:extremal_nhek_and_polar,sec:near_polar_asymptotics} formulate shadow boundaries, NHEK structure, and near-polar expansions. \Cref{sec:numerical_error_analysis} provides the numerical convergence and error analysis. Finally, \Cref{sec:results_discussion,sec:limitations_future_work,sec:conclusions} discuss astrophysical implications, limitations, and concluding remarks.

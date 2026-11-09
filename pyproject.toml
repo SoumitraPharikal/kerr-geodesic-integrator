@@ -4,16 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kerr-geodesics"
-version = "0.1.0"
+version = "1.0.0"
 description = "A validated numerical framework for null geodesic integration in Schwarzschild and Kerr spacetimes."
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
-    { name = "Soumitra" }
+    { name = "Soumitra Pharikal", email = "24123@iiserbpr.ac.in" }
 ]
 license = { text = "MIT" }
 dependencies = [
     "numpy>=2.0.0",
+    "scipy>=1.11.0",
 ]
 
 [project.optional-dependencies]

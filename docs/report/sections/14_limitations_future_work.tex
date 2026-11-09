@@ -1,0 +1,26 @@
+\section{Limitations and Future Directions}
+\label{sec:limitations_future_work}
+
+\subsection{Current Mathematical and Numerical Limitations}
+To preserve scientific integrity, we explicitly document the physical, geometric, and numerical boundaries of the current implementation:
+\begin{enumerate}
+    \item \textbf{Coordinate Singularities in Boyer--Lindquist Representation:}  
+    Boyer--Lindquist coordinates suffer from physical coordinate singularities at the outer event horizon ($\Delta(r) = 0$) and along the rotation axis ($\sin\theta = 0$). While our built-in horizon-cutoff event (\texttt{HorizonCutoffEvent}) safely halts ingoing trajectories at $r = r_+ + 10^{-3}M$, full penetration across the Cauchy horizon or into the black hole interior is outside the domain of the current solver. Ingoing Kerr--Schild or horizon-penetrating coordinates would be required to study interior dynamics.
+    \item \textbf{Breakdown of Smooth Polygonal Expansion at Critical Extremality:}  
+    The polygonal chord deficit formula $P_N - P_{\rm cont} = -\frac{\pi^2}{6N^2}\mathcal{I} + \mathcal{O}(N^{-4})$ requires $C^4$ boundary smoothness and strictly positive metric speed $\sigma > 0$. For extremal Kerr ($a = M$) observed at $\theta_o \ge \theta_{\rm crit} \approx 47.0586^\circ$, the shadow boundary forms a geometric cusp ($\theta_o = \theta_{\rm crit}$) or joins the vertical NHEK line segment at non-differentiable $C^0$ corners ($\theta_o > \theta_{\rm crit}$). At these points, curvature diverges or is ill-defined, and the second-order polygonal convergence degrades to $\mathcal{O}(N^{-1})$.
+    \item \textbf{Non-Uniformity in the Schwarzschild Limit ($a \to 0$):}  
+    The near-polar asymptotic expansions are established for each fixed nonzero spin $a > 0$. They cannot be extended uniformly to the open limit $a \to 0$ because the denominator $a(r - M)$ in $\xi(r)$ and $\eta(r)$ collapses. For exact $a = 0$, the specialized Schwarzschild solver must be used directly.
+    \item \textbf{Sampled Residuals vs. Certified Continuous Bounds:}  
+    The 10,001-node residual audit provides high-confidence sampled numerical evidence of $\mathcal{O}(s^2)$ scaling. However, it does not constitute a certified analytical upper bound on the continuous supremum $\sup_\phi \|\mathbf{r}_{\rm num} - \mathbf{r}_{\rm asym}\|$ over the continuum.
+\end{enumerate}
+
+\subsection{Future Research Directions}
+The \textsc{Kerr Geodesic Integrator} provides a modular, extensible foundation for several promising computational astrophysics developments:
+\begin{itemize}
+    \item \textbf{Camera-Grid Backward Ray-Tracing:} Implementing full 2D camera-plane pixel grids for backward ray-tracing from the observer screen into the accretion environment, allowing direct computation of intensity maps, lensing magnification, and shadow silhouettes with arbitrary background illumination.
+    \item \textbf{Cross-Code Benchmarking and Validation:} Conducting direct, high-precision cross-validation benchmarks against established relativistic ray-tracing suites such as \textsc{GYOTO}, \textsc{Geokerr}, and \textsc{RAPTOR}, as well as comparing strong-deflection limit deflection angles and magnification ratios against analytical expansions \cite{Bozza2002}.
+    \item \textbf{General Relativistic Radiative Transfer (GRRT):} Coupling the null geodesic integrator to synchrotron emission and absorption models for magnetized plasma accretion flows (such as MAD and SANE GRMHD simulations), generating synthetic images and visibility amplitudes for direct comparison with EHT and ngEHT data.
+    \item \textbf{Kerr--Newman and Charged Spacetimes:} Extension of the Hamiltonian kernel to include electromagnetic field tensors and net black hole charge $Q$, enabling the exploration of charged shadow silhouettes and magnetospheric particle acceleration.
+    \item \textbf{Non-Kerr Spacetimes and No-Hair Theorem Tests:} Integrating null geodesics in parameterized non-Kerr geometries (e.g., Johannsen--Psaltis metrics \cite{JohannsenPsaltis2010} or boson stars) to quantify shadow deformations and establish observational bounds on deviations from general relativity.
+    \item \textbf{GPU-Accelerated Parallel Ray-Tracing:} Porting the Dormand--Prince kernel to CUDA/OpenCL to enable parallel ray-tracing of millions of camera pixels simultaneously, facilitating real-time interactive relativistic visualizations.
+\end{itemize}

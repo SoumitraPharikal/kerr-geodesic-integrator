@@ -1,0 +1,21 @@
+\section{Conclusions}
+\label{sec:conclusions}
+
+We have developed, verified, and documented the \textsc{Kerr Geodesic Integrator}, a mathematically rigorous, scale-invariant, high-precision computational framework for relativistic geodesic propagation in Kerr and Schwarzschild spacetimes.
+
+By formulating the equations of motion in an eight-dimensional canonical Hamiltonian phase space with exact analytical contravariant metric derivatives, the framework achieves phase-space constraint preservation near machine precision ($\max \mathcal{H}_{\rm norm} < 10^{-13}$) using an adaptive Dormand--Prince 8(5,3) Runge--Kutta solver. The implementation of continuous polynomial dense output and high-precision event root-finding enables exact boundary detection for horizon plunges, camera escape spheres, and radial turning points without unphysical step extrapolation. Furthermore, monitoring the Carter constant trajectory drift alongside the exact algebraic relation $\mathcal{Q}_{\rm polar} - \mathcal{Q}_{\rm radial} = \Sigma(2\mathcal{H} + \mu^2)$ guarantees simultaneous verification of dynamical integrability and numerical Hamiltonian constraint satisfaction.
+
+The framework was comprehensively validated against classical analytical benchmarks across both spacetimes:
+\begin{itemize}
+    \item Exact radial null geodesics and coordinate time logarithmic divergence in Schwarzschild geometry.
+    \item Fixed-point phase-space instability and perturbation runaway at the Schwarzschild photon sphere ($r = 3M, b = 3\sqrt{3}M$).
+    \item Marginal stability and epicyclic frequencies at the Schwarzschild ISCO ($r = 6M$) and Kerr prograde/retrograde ISCOs across spins $|a| \le M$.
+    \item Near-extremal logarithmic divergence of horizon-to-ISCO proper radial distance $\Delta s_{\rm prop} = \frac{M}{6}\ln(1/\epsilon) + \mathcal{O}(1)$ ($\epsilon \equiv 1-a/M$).
+    \item Critical photon scattering separatrices and the universal logarithmic affine dwell divergence $\lambda_{\rm dwell} \sim -\ln|b - b_{\rm crit}|$.
+\end{itemize}
+
+In the domain of black hole shadow construction, the package provides exact celestial Bardeen boundary parameterizations $(\alpha, \beta)$ utilizing an offset radial variable $u = r - 3M$ to eliminate catastrophic cancellation. The solver deterministically constructs closed shadow boundaries across all spins and inclinations, successfully resolving the vertical Near-Horizon Extreme Kerr (NHEK) line segment at supercritical inclinations ($\theta_o > \theta_{\rm crit} \approx 47.0586^\circ$).
+
+In the near-polar limit ($\theta_o \to 0$), we derived the exact asymptotic perturbation expansions, proving that the metric speed forms a pure $\cos\phi$ dipole $\sigma(\phi) = R_p + 2s\lambda\cos\phi + \mathcal{O}(s^2)$ while planar curvature magnitude is invariant to first order $\kappa(\phi) = R_p^{-1} + \mathcal{O}(s^2)$. By dipole orthogonality, the continuous perimeter and curvature functional are invariant to first order: $P_{\rm cont}(s) = 2\pi R_p + \mathcal{O}(s^2)$ and $\mathcal{I}(s) = 2\pi R_p + \mathcal{O}(s^2)$. The global polygonal perimeter chord deficit formula $P_N - P_{\rm cont} = -\frac{\pi^2}{6N^2}\mathcal{I} + \mathcal{O}(N^{-4})$ was rigorously established for smooth boundaries, and quadratic residual scaling was verified across nine near-polar configurations via a 10,001-node 75-digit \textsc{Decimal} audit.
+
+The entire scientific software pipeline has been verified through a complete 4,412-item automated regression test suite passing with 100\% success, and all 14 published scientific deliverables (figures and CSV datasets) were confirmed to reproduce deterministically. The complete computational framework, validated against analytical solutions and high-precision benchmarks, provides an open, extensible, and fully reproducible foundation for future research in relativistic astrophysics, accretion imaging, and precision tests of strong-field gravity.

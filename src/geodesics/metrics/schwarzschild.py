@@ -70,6 +70,11 @@ class SchwarzschildMetric(SpacetimeMetric):
         """Critical impact parameter separating capture from scattering: b_crit = 3*sqrt(3)*M."""
         return 3.0 * np.sqrt(3.0) * self._mass
 
+    @property
+    def isco_radius(self) -> float:
+        """Coordinate radius of the innermost stable circular orbit r_ISCO = 6M."""
+        return 6.0 * self._mass
+
     def lapse(self, r: float) -> float:
         """Evaluates the Schwarzschild lapse function f(r) = 1 - 2M / r.
 

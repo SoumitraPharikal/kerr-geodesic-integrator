@@ -1,0 +1,59 @@
+\section{Numerical Integration Architecture and Implementation}
+\label{sec:numerical_architecture}
+
+\subsection{Dormand--Prince 8(5,3) Adaptive Integrator}
+The numerical integration of Hamilton's equations \eqref{eq:hamilton_x_dot}--\eqref{eq:hamilton_p_dot} is performed using the high-order explicit Runge--Kutta solver Dormand--Prince 8(5,3) (\textsc{DOP853}) \cite{DormandPrince1980,Hairer1993}. This method computes a 12-stage 8th-order accurate solution with embedded error estimators of order $q = 7$ for local step-size control.
+
+Given an accepted state $y_n$ at affine parameter $\lambda_n$ with step size $h_n$, the next trial step size $h_{n+1}$ is computed according to single-step error-based adaptive step-size control:
+\begin{equation}
+    h_{n+1} = h_n \cdot \min\left( \text{fac}_{\max}, \max\left( \text{fac}_{\min}, \text{fac} \cdot \left(\frac{1}{\text{err}_n}\right)^{1/(q+1)} \right) \right),
+    \label{eq:step_size_adaptation}
+\end{equation}
+where $1/(q+1) = 1/8$ corresponds to the 7th-order error estimator, $\text{fac} = 0.9$ is a standard safety factor, $[\text{fac}_{\min}, \text{fac}_{\max}] = [0.2, 5.0]$, and the normalized mixed-norm error estimate is:
+\begin{equation}
+    \text{err}_n \equiv \sqrt{ \frac{1}{8} \sum_{i=1}^8 \left( \frac{\hat{e}_{n, i}}{\text{atol}_i + \text{rtol} \cdot |y_{n, i}|} \right)^2 },
+    \label{eq:error_norm}
+\end{equation}
+where $\hat{e}_{n, i}$ combines the embedded lower-order stage differences. Default numerical tolerances are configured to $\text{rtol} = 10^{-10}$ and $\text{atol} = 10^{-12}$, maintaining phase-space constraint preservation near machine precision over hundreds of orbital dynamical times.
+
+\subsection{Continuous Dense Output and Event Detection}
+A major architectural requirement in relativistic ray-tracing is the exact localization of physical boundaries, such as event horizons, turning points, and detector planes. Traditional fixed-step integration or post-hoc linear interpolation introduces unacceptably large $\mathcal{O}(h^2)$ interpolation errors into root-finding, compromising high-order boundary localization.
+
+The \textsc{Kerr Geodesic Integrator} leverages \textsc{DOP853}'s continuous polynomial interpolant (dense output) \cite{Hairer1993}. Within any accepted step $[\lambda_n, \lambda_n + h_n]$, the dense output provides an $\mathcal{O}(h^8)$-accurate state vector:
+\begin{equation}
+    y(\lambda_n + \theta h_n) = y_n + h_n \sum_{j=1}^{s^*} b_j^*(\theta) k_j, \qquad \theta \in [0, 1],
+    \label{eq:dense_output_polynomial}
+\end{equation}
+where $k_j = f(\lambda_n + c_j h_n, Y_j)$ are the Runge--Kutta stage derivative evaluations ($s^* = 16$ stages for continuous output), and $b_j^*(\theta)$ are polynomial weighting functions of the normalized step fraction $\theta$.
+
+When an event condition $g(y(\lambda)) = 0$ changes sign across an integration step ($g(y_n) \cdot g(y_{n+1}) \le 0$), the root $\lambda^*$ is isolated by combining the polynomial interpolant with Brent's hybrid bisection/secant method \cite{Brent1973,Virtanen2020}. This guarantees that boundary intersections are resolved to relative floating-point precision ($\Delta \lambda^* / \lambda_n \sim \epsilon_{\rm mach} \approx 10^{-15}$).
+
+\subsection{Core Geodesic Termination Events}
+The package defines three standardized physical event classes:
+\begin{enumerate}
+    \item \textbf{Exterior Horizon-Cutoff Event (\texttt{HorizonCutoffEvent}):}  
+    In Boyer--Lindquist coordinates, the coordinate time rate $dt/d\lambda = p^t \sim 1/\Delta(r)$ diverges as $r \to r_+$, so that coordinate time $t \to \infty$ even though the affine parameter to reach the horizon remains finite. To avoid infinite coordinate-time dwelling and numerical loss of significance, the event monitors:
+    \begin{equation}
+        g_{\rm horizon}(y) \equiv r - (r_+ + \epsilon_H) = 0, \qquad \text{direction} = -1 \text{ (inward)},
+    \end{equation}
+    with default safety buffer $\epsilon_H = 10^{-3}M$.
+    \item \textbf{Escape-Radius Event (\texttt{EscapeRadiusEvent}):}  
+    Detects scattered or escaping rays crossing an asymptotic camera sphere:
+    \begin{equation}
+        g_{\rm escape}(y) \equiv r - R_{\rm esc} = 0, \qquad \text{direction} = +1 \text{ (outward)},
+    \end{equation}
+    with $R_{\rm esc} \gg M$ (typically $R_{\rm esc} = 50M$ to $1000M$).
+    \item \textbf{Radial Turning-Point Event (\texttt{RadialTurningPointEvent}):}  
+    Identifies periapsis and apoapsis passage by detecting zero-crossings of radial momentum:
+    \begin{equation}
+        g_{\rm turning}(y) \equiv p_r = 0.
+    \end{equation}
+\end{enumerate}
+
+\subsection{Event Coincidence and Ambiguity Handling}
+When multiple terminal events trigger within the same integration interval $[\lambda_n, \lambda_{n+1}]$ (for instance, an escaping trajectory simultaneously triggering a turning point and an escape radius), the integrator performs a strict chronological sort of all recovered roots:
+\begin{equation}
+    \lambda^*_{\rm terminal} = \min_{j} \left\{ \lambda^*_j \;\middle|\; g_j(y(\lambda^*_j)) = 0, \; \text{terminal}_j = \text{True} \right\}.
+    \label{eq:earliest_root_selection}
+\end{equation}
+The trajectory is truncated exactly at $\lambda^*_{\rm terminal}$, preventing unphysical extrapolation beyond physical boundaries and guaranteeing deterministic trajectory classification.

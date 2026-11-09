@@ -1,0 +1,57 @@
+\section{Conserved Quantities and Numerical Diagnostics}
+\label{sec:conserved_quantities}
+
+\subsection{Scale-Invariant Hamiltonian Constraint Monitoring}
+The exact preservation of the Hamiltonian constraint $\mathcal{H} = -\frac{1}{2}\mu^2$ is the primary diagnostic of numerical phase-space fidelity and constraint consistency. However, because $\mathcal{H}$ scales quadratically with particle momentum ($\mathcal{H}(\alpha p) = \alpha^2 \mathcal{H}(p)$), the raw unnormalized residual:
+\begin{equation}
+    \delta\mathcal{H}(\lambda) \equiv \mathcal{H}(x(\lambda), p(\lambda)) + \frac{1}{2}\mu^2
+    \label{eq:raw_hamiltonian_residual}
+\end{equation}
+is not physically meaningful across trajectories with different momentum normalizations.
+
+To provide a scale-invariant metric, the framework defines the dimensionless normalized Hamiltonian residual:
+\begin{equation}
+    \mathcal{H}_{\rm norm}(\lambda) \equiv \frac{|\mathcal{H}(x(\lambda), p(\lambda)) + \frac{1}{2}\mu^2|}{\sum_{\mu=0}^3 |p_\mu \dot{x}^\mu| + \mu^2}.
+    \label{eq:normalized_hamiltonian_residual}
+\end{equation}
+Under affine momentum rescaling $p_\mu \to \alpha p_\mu$, $\mathcal{H}_{\rm norm}$ is strictly invariant for null geodesics ($\mu = 0$); for timelike trajectories ($\mu > 0$), scale-invariance holds under joint scaling $(p_\mu, \mu) \to (\alpha p_\mu, \alpha \mu)$. In production runs using $\text{rtol} = 10^{-10}$, the normalized residual satisfies $\max_\lambda \mathcal{H}_{\rm norm}(\lambda) < 10^{-13}$ across thousands of dynamical orbital periods.
+
+\subsection{Energy and Axial Angular Momentum Diagnostics}
+Because Boyer--Lindquist coordinates are stationary ($\partial_t g^{\mu\nu} = 0$) and axisymmetric ($\partial_\phi g^{\mu\nu} = 0$), the canonical equations of motion enforce $\dot{p}_t = 0$ and $\dot{p}_\phi = 0$ identically in the ODE right-hand side. Consequently, the numerical drift in $p_t = -E$ and $p_\phi = L_z$ reflects floating-point accumulation during solver state updates rather than an independent dynamical validation of metric forces. We define the maximum relative conservation errors along a trajectory of affine span $[0, \lambda_f]$ as:
+\begin{align}
+    \Delta E_{\rm rel} &\equiv \max_{\lambda \in [0, \lambda_f]} \frac{|E(\lambda) - E(0)|}{|E(0)|}, \label{eq:drift_energy} \\
+    \Delta L_{z, \rm rel} &\equiv \max_{\lambda \in [0, \lambda_f]} \frac{|L_z(\lambda) - L_z(0)|}{|L_z(0)| + 10^{-15}M}. \label{eq:drift_angmom}
+\end{align}
+Across all standard test orbits, $\Delta E_{\rm rel} < 10^{-14}$ and $\Delta L_{z, \rm rel} < 10^{-14}$, verifying exact numerical conservation up to machine precision.
+
+\subsection{Dual-Representation Carter Constant Diagnostics}
+The Carter constant $\mathcal{Q}$ provides a stringent, genuine dynamical test of integration accuracy because its conservation depends dynamically on the non-trivial coupling between $r$ and $\theta$ motion.
+
+To detect loss of significance or coordinate-related conditioning issues, the integrator computes $\mathcal{Q}$ via its polar and radial forms \eqref{eq:carter_polar_rep} and \eqref{eq:carter_radial_rep} at every recorded time step:
+\begin{equation}
+    \mathcal{Q}_{\rm polar}(\lambda) \equiv p_\theta^2 + \cos^2\theta \left[ a^2(\mu^2 - E^2) + \frac{L_z^2}{\sin^2\theta} \right],
+\end{equation}
+\begin{equation}
+    \mathcal{Q}_{\rm radial}(\lambda) \equiv \frac{\left[(r^2 + a^2)E - a L_z\right]^2}{\Delta} - \Delta p_r^2 - \mu^2 r^2 - (L_z - aE)^2.
+\end{equation}
+An exact algebraic identity connects the two representations:
+\begin{equation}
+    \mathcal{Q}_{\rm polar} - \mathcal{Q}_{\rm radial} = \Sigma(r, \theta) \left( 2\mathcal{H} + \mu^2 \right).
+    \label{eq:carter_cross_identity}
+\end{equation}
+Thus, the pointwise cross-discrepancy between polar and radial Carter constants is algebraically tied to the Hamiltonian constraint residual, serving as a dual-channel consistency check.
+
+We evaluate two distinct diagnostic metrics:
+\begin{enumerate}
+    \item \textbf{Trajectory Drift Error:}
+    \begin{equation}
+        \delta\mathcal{Q}_{\rm drift} \equiv \max_{\lambda \in [0, \lambda_f]} \frac{|\mathcal{Q}_{\rm polar}(\lambda) - \mathcal{Q}_{\rm polar}(0)|}{|\mathcal{Q}_{\rm polar}(0)| + 10^{-15}M^2}.
+        \label{eq:carter_drift_metric}
+    \end{equation}
+    \item \textbf{Cross-Representation Algebraic Discrepancy:}
+    \begin{equation}
+        \Delta\mathcal{Q}_{\rm cross} \equiv \max_{\lambda \in [0, \lambda_f]} \frac{|\mathcal{Q}_{\rm polar}(\lambda) - \mathcal{Q}_{\rm radial}(\lambda)|}{|\mathcal{Q}_{\rm polar}(\lambda)| + 10^{-15}M^2}.
+        \label{eq:carter_cross_metric}
+    \end{equation}
+\end{enumerate}
+For non-equatorial trajectories outside the horizon, $\Delta\mathcal{Q}_{\rm cross} < 10^{-12}$ and $\delta\mathcal{Q}_{\rm drift} < 10^{-11}$, demonstrating high dynamical fidelity and mutual consistency between both invariants throughout integration.

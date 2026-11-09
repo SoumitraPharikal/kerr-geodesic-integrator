@@ -1,0 +1,82 @@
+\section{Kerr Spacetime and Mathematical Preliminaries}
+\label{sec:kerr_spacetime}
+
+\subsection{Coordinate Conventions and Line Element}
+We adopt standard relativistic geometrized units where the speed of light and the gravitational constant are set to unity:
+\begin{equation}
+    c = G = 1.
+\end{equation}
+In this system, spacetime coordinates and black hole mass $M$ carry dimensions of length $[L]$, while the spin parameter $a \equiv J/M$ carries dimensions of length $[L]$ with the dimensionless spin parameter defined as $\chi \equiv a/M \in [-1, 1]$. We adopt the metric signature convention $(-, +, +, +)$ throughout.
+
+In standard Boyer--Lindquist coordinates \cite{BoyerLindquist1967,MisnerThorneWheeler1973} ordered as $x^\mu = (x^0, x^1, x^2, x^3) = (t, r, \theta, \phi)$, with $t \in (-\infty, \infty)$, $r \in (0, \infty)$, $\theta \in [0, \pi]$, and $\phi \in [0, 2\pi)$, the Kerr metric line element is:
+\begin{align}
+    ds^2 &= -\left(1 - \frac{2Mr}{\Sigma}\right) dt^2 - \frac{4Mar\sin^2\theta}{\Sigma} dt\,d\phi \nonumber \\
+    &\quad + \frac{\Sigma}{\Delta} dr^2 + \Sigma\,d\theta^2 + \left(r^2 + a^2 + \frac{2Ma^2r\sin^2\theta}{\Sigma}\right)\sin^2\theta\,d\phi^2,
+    \label{eq:kerr_line_element}
+\end{align}
+where the fundamental auxiliary functions are defined by:
+\begin{align}
+    \Sigma(r, \theta) &\equiv r^2 + a^2\cos^2\theta, \label{eq:def_sigma} \\
+    \Delta(r) &\equiv r^2 - 2Mr + a^2. \label{eq:def_delta}
+\end{align}
+
+\subsection{Horizons and Ergosphere Boundaries}
+The roots of the radial metric function $\Delta(r) = 0$ define the geometric horizons of the black hole:
+\begin{equation}
+    r_\pm = M \pm \sqrt{M^2 - a^2}.
+    \label{eq:horizon_radii}
+\end{equation}
+For subextremal black holes ($|a| < M$), $r_+$ represents the outer event horizon (a null hypersurface acting as an absolute causal one-way membrane), while $r_-$ represents the inner Cauchy horizon. In the extremal limit $|a| = M$, the two horizons coalesce into a single degenerate horizon at $r_+ = r_- = M$.
+
+The boundary of the ergosphere corresponds to the static limit surface where the asymptotic timelike Killing vector field $\xi_{(t)} = \partial_t$ becomes null ($g_{tt} = 0$):
+\begin{equation}
+    r_{\rm ergo}^\pm(\theta) = M \pm \sqrt{M^2 - a^2\cos^2\theta}.
+    \label{eq:ergosphere_radii}
+\end{equation}
+In the region $r_+ < r < r_{\rm ergo}^+(\theta)$ (the ergoregion), $g_{tt} > 0$, forcing all physical observers and null particles to rotate in the direction of the black hole spin ($\Omega \equiv d\phi/dt > 0$) due to inertial frame dragging.
+
+\subsection{Covariant and Contravariant Metric Tensors}
+Expressed as a symmetric matrix, the non-zero components of the covariant metric tensor $g_{\mu\nu}$ are:
+\begin{equation}
+    g_{00} = -\left(1 - \frac{2Mr}{\Sigma}\right), \quad
+    g_{03} = g_{30} = -\frac{2Mar\sin^2\theta}{\Sigma}, \quad
+    g_{11} = \frac{\Sigma}{\Delta}, \quad
+    g_{22} = \Sigma, \quad
+    g_{33} = \frac{\Xi\sin^2\theta}{\Sigma},
+\end{equation}
+where we define the auxiliary function $\Xi(r, \theta) \equiv (r^2 + a^2)^2 - a^2\Delta\sin^2\theta = (r^2 + a^2)\Sigma + 2Ma^2r\sin^2\theta$.
+
+The metric determinant satisfies the exact algebraic identity:
+\begin{equation}
+    g \equiv \det(g_{\mu\nu}) = g_{11} g_{22} (g_{00} g_{33} - g_{03}^2) = \left(\frac{\Sigma}{\Delta}\right)(\Sigma)\left(-\Delta\sin^2\theta\right) = -\Sigma^2\sin^2\theta.
+    \label{eq:metric_determinant}
+\end{equation}
+Computing the matrix inverse $g^{\mu\nu} = (g_{\mu\nu})^{-1}$ yields the non-zero contravariant components:
+\begin{align}
+    g^{00} &= -\frac{\Xi}{\Sigma\Delta} = -\frac{(r^2 + a^2)^2 - a^2\Delta\sin^2\theta}{\Sigma\Delta}, \label{eq:g_inv_00} \\
+    g^{03} &= g^{30} = -\frac{2Mar}{\Sigma\Delta}, \label{eq:g_inv_03} \\
+    g^{11} &= \frac{\Delta}{\Sigma}, \label{eq:g_inv_11} \\
+    g^{22} &= \frac{1}{\Sigma}, \label{eq:g_inv_22} \\
+    g^{33} &= \frac{\Delta - a^2\sin^2\theta}{\Sigma\Delta\sin^2\theta} = \frac{1}{\Sigma\sin^2\theta} - \frac{a^2}{\Sigma\Delta}. \label{eq:g_inv_33}
+\end{align}
+
+\subsection{Exact Analytical Coordinate Derivatives of the Inverse Metric}
+Direct numerical integration of Hamilton's canonical equations requires the exact gradients $\partial_\mu g^{\alpha\beta}$. In Boyer--Lindquist coordinates, stationarity ($\partial_t g^{\alpha\beta} = 0$) and axisymmetry ($\partial_\phi g^{\alpha\beta} = 0$) ensure that non-zero derivatives occur strictly with respect to $r$ and $\theta$.
+
+Evaluating the partial derivatives yields for the radial gradients:
+\begin{align}
+    \frac{\partial g^{00}}{\partial r} &= -\frac{4r(r^2 + a^2) - 2a^2(r - M)\sin^2\theta}{\Sigma\Delta} + \frac{\Xi}{\Sigma\Delta}\left(\frac{2r}{\Sigma} + \frac{2r - 2M}{\Delta}\right), \label{eq:dg_dr_00} \\
+    \frac{\partial g^{03}}{\partial r} &= -\frac{2Ma}{\Sigma\Delta} + \frac{2Mar}{\Sigma^2\Delta}(2r) + \frac{2Mar}{\Sigma\Delta^2}(2r - 2M), \label{eq:dg_dr_03} \\
+    \frac{\partial g^{11}}{\partial r} &= \frac{2r - 2M}{\Sigma} - \frac{\Delta}{\Sigma^2}(2r), \label{eq:dg_dr_11} \\
+    \frac{\partial g^{22}}{\partial r} &= -\frac{2r}{\Sigma^2}, \label{eq:dg_dr_22} \\
+    \frac{\partial g^{33}}{\partial r} &= -\frac{2r}{\Sigma^2\sin^2\theta} + \frac{2a^2 r}{\Sigma^2\Delta} + \frac{a^2(2r - 2M)}{\Sigma\Delta^2}. \label{eq:dg_dr_33}
+\end{align}
+Similarly, using $\frac{\partial}{\partial\theta}\left(\frac{1}{\Sigma}\right) = \frac{2a^2\cos\theta\sin\theta}{\Sigma^2}$ and $\frac{\partial\Xi}{\partial\theta} = -2a^2\Delta\sin\theta\cos\theta$, the polar angle derivatives with respect to $\theta$ are:
+\begin{align}
+    \frac{\partial g^{00}}{\partial \theta} &= \frac{2a^2\cos\theta\sin\theta}{\Sigma} - \frac{\Xi}{\Sigma^2\Delta}(2a^2\cos\theta\sin\theta) = \frac{2Mr(r^2 + a^2)}{\Sigma^2\Delta}\left(-2a^2\cos\theta\sin\theta\right), \label{eq:dg_dth_00} \\
+    \frac{\partial g^{03}}{\partial \theta} &= -\frac{2Mar}{\Sigma^2\Delta}(2a^2\cos\theta\sin\theta), \label{eq:dg_dth_03} \\
+    \frac{\partial g^{11}}{\partial \theta} &= \frac{\Delta}{\Sigma^2}(2a^2\cos\theta\sin\theta), \label{eq:dg_dth_11} \\
+    \frac{\partial g^{22}}{\partial \theta} &= \frac{2a^2\cos\theta\sin\theta}{\Sigma^2}, \label{eq:dg_dth_22} \\
+    \frac{\partial g^{33}}{\partial \theta} &= -\frac{2\cos\theta}{\Sigma\sin^3\theta} + \frac{2a^2\cos\theta\sin\theta}{\Sigma^2\sin^2\theta} - \frac{a^2}{\Sigma^2\Delta}(2a^2\cos\theta\sin\theta). \label{eq:dg_dth_33}
+\end{align}
+Implementing exact closed-form derivatives eliminates the truncation errors and numerical instabilities associated with finite-difference approximations, ensuring high fidelity during adaptive time-stepping.

@@ -1,0 +1,110 @@
+\documentclass[11pt,a4paper]{article}
+
+% ==============================================================================
+% PACKAGES AND ENCODING
+% ==============================================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsfonts,amsthm,mathtools}
+\usepackage{geometry}
+\geometry{top=2.8cm,bottom=2.8cm,left=2.5cm,right=2.5cm}
+\usepackage{booktabs,tabularx,multirow,array}
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{xcolor}
+\definecolor{navyblue}{RGB}{0,51,102}
+\definecolor{darkred}{RGB}{139,0,0}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=navyblue,
+    citecolor=navyblue,
+    urlcolor=navyblue,
+    pdftitle={Kerr Geodesic Integrator: Technical Report},
+    pdfauthor={Soumitra Pharikal}
+}
+\usepackage{cite}
+\usepackage{cleveref}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{physics}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf,width=0.92\linewidth}
+
+% Numbering depth
+\numberwithin{equation}{section}
+\numberwithin{figure}{section}
+\numberwithin{table}{section}
+
+% ==============================================================================
+% AUTHOR METADATA PLACEHOLDERS
+% Edit these placeholders before final dissemination or repository archival
+% ==============================================================================
+\newcommand{\ReportAuthorName}{Soumitra Pharikal}
+\newcommand{\ReportAuthorEmail}{24123@iiserbpr.ac.in}
+\newcommand{\ReportAuthorAffiliation}{Indian Institute of Science Education and Research Berhampur (IISER Berhampur), India}
+\newcommand{\ProjectRepositoryURL}{\url{https://github.com/SoumitraPharikal/kerr-geodesic-integrator}}
+
+% ==============================================================================
+% DOCUMENT METADATA
+% ==============================================================================
+\title{
+    \vspace{-1.5cm}
+    \textbf{\Large Numerical Integration, Constraint Preservation, and Celestial Shadow Construction in Kerr Spacetime} \\[0.5em]
+    \large A Rigorous Computational Framework for Relativistic Geodesic Dynamics
+}
+
+\author{
+    \textbf{\ReportAuthorName} \\
+    \texttt{\ReportAuthorEmail} \\[0.3em]
+    \small \ReportAuthorAffiliation
+}
+
+\date{\today}
+
+% ==============================================================================
+% MAIN DOCUMENT BODY
+% ==============================================================================
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We present the theoretical formulation, architectural design, and numerical verification of the \textsc{Kerr Geodesic Integrator}, an open-source computational physics package for null and timelike geodesic propagation in Kerr and Schwarzschild spacetimes. Formulated in eight-dimensional canonical Hamiltonian phase space in Boyer--Lindquist coordinates with analytical inverse-metric derivatives, the integrator employs an adaptive Dormand--Prince 8(5,3) Runge--Kutta solver with continuous polynomial dense output and event root-finding. We establish phase-space constraint preservation ($|2\mathcal{H}| \le 10^{-12}$) and analyze conserved quantities along geodesics. Benchmarks span the Schwarzschild photon sphere at $r=3M$, timelike circular orbits at the innermost stable circular orbit ($r_{\rm ISCO} = 6M$), Kerr equatorial circular photon orbits ($r_{\rm ph}^\pm$), epicyclic oscillations, and critical capture separatrices with logarithmic affine dwell divergence. Furthermore, we construct celestial Bardeen black-hole shadow boundaries across spins ($0 \le |a| \le M$) and inclinations, resolving the Near-Horizon Extreme Kerr (NHEK) line segment at supercritical inclinations ($\theta_o > \theta_{\rm crit} \approx 47.06^\circ$). In the near-polar limit ($\theta_o \ll 1$), we verify first-order speed dipole structure and curvature invariance, analyze the global polygonal chord deficit, and evaluate numerical convergence across 4,412 automated regression tests.
+\end{abstract}
+
+\vspace{0.5cm}
+\noindent\textbf{Keywords:} General Relativity, Kerr Spacetime, Geodesic Integration, Hamiltonian Dynamics, Carter Constant, Black Hole Shadow, Near-Horizon Extreme Kerr, Numerical Astrophysics.
+
+\clearpage
+\tableofcontents
+\clearpage
+
+% ------------------------------------------------------------------------------
+% MODULAR CHAPTER INCLUSIONS
+% ------------------------------------------------------------------------------
+\input{sections/01_introduction.tex}
+\input{sections/02_kerr_spacetime.tex}
+\input{sections/03_hamiltonian_dynamics.tex}
+\input{sections/04_numerical_architecture.tex}
+\input{sections/05_conserved_quantities.tex}
+\input{sections/06_schwarzschild_validation.tex}
+\input{sections/07_kerr_physical_orbits.tex}
+\input{sections/08_photon_scattering.tex}
+\input{sections/09_shadow_construction.tex}
+\input{sections/10_extremal_nhek_and_polar.tex}
+\input{sections/11_near_polar_asymptotics.tex}
+\input{sections/12_numerical_error_analysis.tex}
+\input{sections/13_results_discussion.tex}
+\input{sections/14_limitations_future_work.tex}
+\input{sections/15_conclusions.tex}
+
+% ------------------------------------------------------------------------------
+% BIBLIOGRAPHY
+% ------------------------------------------------------------------------------
+\newpage
+\bibliographystyle{unsrt}
+\bibliography{references}
+
+\end{document}

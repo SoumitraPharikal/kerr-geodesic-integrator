@@ -1,0 +1,85 @@
+\section{Geodesic Motion in Hamiltonian Formulation}
+\label{sec:hamiltonian_dynamics}
+
+\subsection{Canonical Hamiltonian and State-Space Ordering}
+Geodesic trajectories in curved spacetime correspond to the characteristic curves of the super-Hamiltonian on the cotangent bundle $T^*M$:
+\begin{equation}
+    \mathcal{H}(x^\mu, p_\mu) = \frac{1}{2} g^{\mu\nu}(x) p_\mu p_\nu,
+    \label{eq:super_hamiltonian}
+\end{equation}
+where $x^\mu$ are the spacetime coordinates and $p_\mu \equiv g_{\mu\nu} \dot{x}^\nu$ are the covariant canonical momenta conjugate to $x^\mu$, with overdots denoting differentiation with respect to the affine parameter $\lambda$.
+
+We define the complete eight-dimensional phase-space state vector $y \in \mathbb{R}^8$ with standard contiguous ordering:
+\begin{equation}
+    y \equiv \left(x^0, x^1, x^2, x^3, p_0, p_1, p_2, p_3\right)^T = \left(t, r, \theta, \phi, p_t, p_r, p_\theta, p_\phi\right)^T.
+    \label{eq:state_vector_def}
+\end{equation}
+Hamilton's canonical equations of motion generate the first-order autonomous dynamical system:
+\begin{align}
+    \dot{x}^\mu &\equiv \frac{dx^\mu}{d\lambda} = +\frac{\partial \mathcal{H}}{\partial p_\mu} = g^{\mu\nu}(x) p_\nu, \label{eq:hamilton_x_dot} \\
+    \dot{p}_\mu &\equiv \frac{dp_\mu}{d\lambda} = -\frac{\partial \mathcal{H}}{\partial x^\mu} = -\frac{1}{2} \left(\frac{\partial g^{\alpha\beta}}{\partial x^\mu}\right) p_\alpha p_\beta. \label{eq:hamilton_p_dot}
+\end{align}
+
+Because the Hamiltonian has no explicit dependence on the affine parameter $\lambda$, $\mathcal{H}$ is an exact invariant along every dynamical trajectory:
+\begin{equation}
+    \frac{d\mathcal{H}}{d\lambda} = \frac{\partial \mathcal{H}}{\partial x^\mu}\dot{x}^\mu + \frac{\partial \mathcal{H}}{\partial p_\mu}\dot{p}_\mu = \left(-\dot{p}_\mu\right)\dot{x}^\mu + \left(\dot{x}^\mu\right)\dot{p}_\mu \equiv 0.
+\end{equation}
+The physical value of the invariant specifies the particle mass shell:
+\begin{equation}
+    2\mathcal{H} = g^{\mu\nu} p_\mu p_\nu = -\mu^2 = 
+    \begin{cases}
+        0 & \text{for null geodesics (photons)}, \\
+        -1 & \text{for timelike geodesics (massive particles)}.
+    \end{cases}
+    \label{eq:dispersion_relation}
+\end{equation}
+
+\subsection{Conserved Invariants from Isometries}
+In Boyer--Lindquist coordinates, the Kerr metric tensor is cyclic in $t$ and $\phi$. Applying Hamilton's equations \eqref{eq:hamilton_p_dot}:
+\begin{align}
+    \dot{p}_t &= -\frac{\partial \mathcal{H}}{\partial t} \equiv 0 \implies p_t = -E = \text{constant}, \label{eq:conserved_energy} \\
+    \dot{p}_\phi &= -\frac{\partial \mathcal{H}}{\partial \phi} \equiv 0 \implies p_\phi = L_z = \text{constant}, \label{eq:conserved_angmom}
+\end{align}
+where $E > 0$ represents the conserved asymptotic specific energy of the particle and $L_z$ represents the conserved axial component of specific angular momentum.
+
+\subsection{Carter Separability and the Carter Constant}
+In addition to $E$ and $L_z$, Carter \cite{Carter1968} proved that the Hamilton--Jacobi equation separates completely via an irreducible second-rank Killing tensor $K_{\mu\nu} = 2\Sigma l_{(\mu} n_{\nu)} + r^2 g_{\mu\nu}$, where $l^\mu$ and $n^\mu$ are the principal null vectors of the Kerr geometry. The resulting non-trivial fourth constant of motion is the Carter constant $\mathcal{Q}$:
+\begin{equation}
+    \mathcal{Q} \equiv K^{\mu\nu} p_\mu p_\nu - (L_z - aE)^2.
+\end{equation}
+The Carter constant can be expressed in two independent, mathematically equivalent representations:
+\begin{enumerate}
+    \item \textbf{Polar Representation:}
+    \begin{equation}
+        \mathcal{Q}_{\rm polar}(\theta, p_\theta) \equiv p_\theta^2 + \cos^2\theta \left[ a^2(\mu^2 - E^2) + \frac{L_z^2}{\sin^2\theta} \right].
+        \label{eq:carter_polar_rep}
+    \end{equation}
+    \item \textbf{Radial Representation:}
+    \begin{equation}
+        \mathcal{Q}_{\rm radial}(r, p_r) \equiv \frac{\left[(r^2 + a^2)E - a L_z\right]^2}{\Delta} - \Delta p_r^2 - \mu^2 r^2 - (L_z - aE)^2.
+        \label{eq:carter_radial_rep}
+    \end{equation}
+\end{enumerate}
+In literature, it is often convenient to define the Carter-separable constant $\mathcal{K}$:
+\begin{equation}
+    \mathcal{K} \equiv \mathcal{Q} + (L_z - aE)^2.
+    \label{eq:carter_k_def}
+\end{equation}
+Equating the Hamiltonian constraint to zero yields the decoupled equations for the radial and polar coordinate momenta:
+\begin{align}
+    \Sigma^2 \left(\frac{dr}{d\lambda}\right)^2 &= R(r) \equiv \left[(r^2 + a^2)E - a L_z\right]^2 - \Delta \left( \mu^2 r^2 + \mathcal{K} \right), \label{eq:radial_potential_R} \\
+    \Sigma^2 \left(\frac{d\theta}{d\lambda}\right)^2 &= \Theta(\theta) \equiv \mathcal{Q} - \cos^2\theta \left[ a^2(\mu^2 - E^2) + \frac{L_z^2}{\sin^2\theta} \right]. \label{eq:polar_potential_Theta}
+\end{align}
+Classically allowed motion requires $R(r) \ge 0$ and $\Theta(\theta) \ge 0$ simultaneously.
+
+\subsection{Affine Momentum Rescaling and Scale Invariance}
+For null geodesics ($\mu = 0$), the physical trajectory in spacetime depends only on the ratios of conserved quantities rather than their absolute values. Under the scale transformation:
+\begin{equation}
+    p_\mu \to \alpha p_\mu \quad (\alpha > 0), \qquad \lambda \to \frac{\lambda}{\alpha},
+    \label{eq:scale_transformation}
+\end{equation}
+we find $\dot{x}^\mu = g^{\mu\nu} (\alpha p_\nu) = \alpha (g^{\mu\nu} p_\nu) = \alpha \frac{dx^\mu}{d\lambda} = \frac{dx^\mu}{d(\lambda/\alpha)}$, which leaves the spatial curve in configuration space invariant. Consequently, all physical observables (turning points, deflection angles, shadow silhouettes) are functions of the normalized impact parameters:
+\begin{equation}
+    \xi \equiv \frac{L_z}{E}, \qquad \eta \equiv \frac{\mathcal{Q}}{E^2}.
+    \label{eq:impact_parameters_xi_eta}
+\end{equation}

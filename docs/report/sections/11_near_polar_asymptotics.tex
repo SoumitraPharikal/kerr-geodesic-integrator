@@ -1,0 +1,152 @@
+\section{Near-Polar Asymptotic Analysis}
+\label{sec:near_polar_asymptotics}
+
+\subsection{Endpoint Perturbation Expansions}
+When the observer polar inclination is near the rotation axis ($\theta_o \ll 1$), the celestial screen coordinates undergo small geometric perturbations away from the exact polar circle. Let:
+\begin{equation}
+    s \equiv \sin\theta_o \ll 1, \qquad c \equiv \cos\theta_o = \sqrt{1 - s^2}.
+\end{equation}
+The boundary turning points correspond to roots of the Carter vertical function $B(r; \theta_o) = 0$:
+\begin{equation}
+    (1 - s^2) \xi(r)^2 = s^2 \left[ \eta(r) + a^2(1 - s^2) \right].
+    \label{eq:turning_point_governing_eq}
+\end{equation}
+
+Let $r_p$ be the polar radius defined by $\xi(r_p) = 0$, and define the expansion derivatives:
+\begin{equation}
+    k \equiv \xi'(r_p), \quad l \equiv \xi''(r_p), \quad e \equiv \eta'(r_p), \quad R_p \equiv \sqrt{\eta(r_p) + a^2}.
+    \label{eq:asymptotic_derivative_defs}
+\end{equation}
+For all $a > 0$, since $r_p \in [1+\sqrt{2}, 3]M > 2M$, the numerator satisfies $6Mr_p - 3r_p^2 - a^2 = -3r_p(r_p - 2M) - a^2 < 0$, ensuring $k = \frac{6Mr_p - 3r_p^2 - a^2}{a(r_p - M)} < 0$ (so $|k| = -k \neq 0$).
+
+Expanding $\Delta r \equiv r - r_p = s\,z_1 + s^2 z_2 + \mathcal{O}(s^3)$ in \eqref{eq:turning_point_governing_eq} yields at order $s^2$:
+\begin{equation}
+    k^2 z_1^2 = R_p^2 \implies z_1 = \pm \frac{R_p}{|k|}.
+\end{equation}
+Defining the scale amplitude:
+\begin{equation}
+    A \equiv \frac{R_p}{|k|} = -\frac{R_p}{k} > 0,
+    \label{eq:def_scale_amplitude_A}
+\end{equation}
+the outer and inner radial turning points are $r_{\max} = r_p + s A + \mathcal{O}(s^2)$ and $r_{\min} = r_p - s A + \mathcal{O}(s^2)$.
+
+At order $s^3$, matching terms yields $2k^2 z_1 z_2 + k l z_1^3 = e z_1$. Dividing by $z_1 = \pm A \neq 0$:
+\begin{equation}
+    2k^2 z_2 + k l A^2 = e \implies \boxed{z_2 = \frac{k e - l R_p^2}{2k^3}}.
+    \label{eq:z2_exact_formula}
+\end{equation}
+Because $z_1^2 = A^2$ is independent of the sign of $z_1$, the second-order displacement $z_2$ is identical for both turning points:
+\begin{align}
+    r_{\max} &= r_p + s A + s^2 z_2 + \mathcal{O}(s^3), \label{eq:r_max_expansion} \\
+    r_{\min} &= r_p - s A + s^2 z_2 + \mathcal{O}(s^3). \label{eq:r_min_expansion}
+\end{align}
+The midpoint displacement satisfies $r_{\rm mid} - r_p = \frac{1}{2}(r_{\max} + r_{\min}) - r_p = s^2 z_2 + \mathcal{O}(s^4)$ (strictly $\mathcal{O}(s^2)$).
+
+\subsection{Full Screen-Coordinate Perturbation Expansions}
+Parameterizing the radial coordinate smoothly as $r(\phi) = r_{\rm mid} - r_{\rm amp}\cos\phi$ on $\phi \in [0, \pi]$ (where $\phi \mapsto \pi - \phi$ relative to Section~\ref{subsec:smooth_contour} so that $\phi = 0$ corresponds to $r_{\min}$ and $\phi = \pi$ to $r_{\max}$):
+\begin{equation}
+    r(\phi) - r_p = -s A \cos\phi + s^2 z_2 + \mathcal{O}(s^3).
+\end{equation}
+
+\subsubsection{Horizontal Coordinate $\alpha(\phi)$}
+Taylor expanding $\xi(r(\phi))$ about $r_p$:
+\begin{align}
+    \xi(r(\phi)) &= k\left(-s A \cos\phi + s^2 z_2\right) + \frac{1}{2}l\left(-s A \cos\phi\right)^2 + \mathcal{O}(s^3) \nonumber \\
+    &= -s k A \cos\phi + s^2 \left( k z_2 + \frac{1}{2} l A^2 \cos^2\phi \right) + \mathcal{O}(s^3).
+\end{align}
+Using $k A = -R_p$ and dividing by $-s$:
+\begin{equation}
+    \alpha(\phi) = -\frac{\xi(r(\phi))}{s} = -R_p\cos\phi - s\left( k z_2 + \frac{1}{2} l A^2 \cos^2\phi \right) + \mathcal{O}(s^2).
+\end{equation}
+Applying the double-angle identity $\cos^2\phi = \frac{1 + \cos(2\phi)}{2}$:
+\begin{equation}
+    \boxed{\alpha(\phi) = -R_p\cos\phi + s\,\delta_0 - s\,\lambda\cos(2\phi) + \mathcal{O}(s^2)},
+    \label{eq:alpha_asymptotic_expansion}
+\end{equation}
+where the first-order deformation and shift coefficients are:
+\begin{align}
+    \lambda &\equiv \frac{1}{4} l A^2 = \frac{l R_p^2}{4k^2}, \label{eq:def_lambda} \\
+    \delta_0 &\equiv -\left(k z_2 + \lambda\right) = -\frac{k e - \frac{1}{2} l R_p^2}{2k^2}. \label{eq:def_delta0}
+\end{align}
+Evaluating the planar area centroid via Green's theorem $\bar{\alpha} = \frac{1}{2A}\oint \alpha^2 d\beta$ confirms that the quadrupole $\lambda$ cancels identically, yielding the exact first-order horizontal centroid displacement:
+\begin{equation}
+    \boxed{\bar{\alpha} = s\left(\delta_0 - \lambda\right) + \mathcal{O}(s^2) = -s\frac{\eta'(r_p)}{2\xi'(r_p)} + \mathcal{O}(s^2)}.
+    \label{eq:near_polar_centroid_shift}
+\end{equation}
+
+\subsubsection{Signed Vertical Coordinate $\beta(\phi)$}
+The squared vertical coordinate is $\beta(\phi)^2 = \eta(r(\phi)) + a^2(1 - s^2) - \frac{1 - s^2}{s^2}\xi(r(\phi))^2$. Expanding both contributions:
+\begin{align}
+    \eta(r(\phi)) + a^2(1 - s^2) &= R_p^2 - s e A \cos\phi + \mathcal{O}(s^2), \\
+    -\frac{1 - s^2}{s^2}\xi(r(\phi))^2 &= -R_p^2\cos^2\phi - 2s R_p\cos\phi \left( k z_2 + \frac{1}{2} l A^2 \cos^2\phi \right) + \mathcal{O}(s^2).
+\end{align}
+Adding yields $\beta(\phi)^2 = R_p^2(1 - \cos^2\phi) + s K_1(\phi) + \mathcal{O}(s^2) = R_p^2\sin^2\phi + s K_1(\phi) + \mathcal{O}(s^2)$, where:
+\begin{equation}
+    K_1(\phi) \equiv -e A \cos\phi - 2 R_p\cos\phi \left( k z_2 + \frac{1}{2} l A^2 \cos^2\phi \right).
+    \label{eq:K1_def}
+\end{equation}
+From the order-$s^3$ endpoint condition, $2k^2 z_2 + l A^2 k = e$. Multiplying by $A = -R_p/k$:
+\begin{equation}
+    -e A = +2 R_p \left( k z_2 + \frac{1}{2} l A^2 \right).
+\end{equation}
+Substituting into $K_1(\phi)$ eliminates the uncoupled $\cos\phi$ term:
+\begin{equation}
+    K_1(\phi) = \cos\phi \left[ 2 R_p k z_2 + l R_p A^2 - 2 R_p k z_2 - l R_p A^2 \cos^2\phi \right] = l R_p A^2 \cos\phi \sin^2\phi.
+    \label{eq:K1_simplified}
+\end{equation}
+Because $\sin^2\phi$ factors globally out of $\beta(\phi)^2$, the square root is extracted without division by $\sin\phi$:
+\begin{equation}
+    \beta_{\rm upper}(\phi) = \sin\phi \cdot R_p \sqrt{1 + s \frac{l A^2}{R_p}\cos\phi + \mathcal{O}(s^2)} = R_p\sin\phi + \frac{1}{2} s l A^2 \sin\phi\cos\phi + \mathcal{O}(s^2).
+\end{equation}
+Using $\sin\phi\cos\phi = \frac{1}{2}\sin(2\phi)$ and $\lambda = \frac{1}{4} l A^2$, and recognizing that the lower branch $\beta \le 0$ matches $-\sin\phi = |\sin\phi|$ on $[\pi, 2\pi]$, we obtain the \textbf{signed, uniformly valid representation over $\phi \in [0, 2\pi]$}:
+\begin{equation}
+    \boxed{\beta(\phi) = R_p\sin\phi + s\,\lambda\sin(2\phi) + \mathcal{O}(s^2)}.
+    \label{eq:beta_asymptotic_expansion}
+\end{equation}
+
+\subsection{Speed Dipole, Curvature Invariance, and First-Order Invariance}
+Differentiating \eqref{eq:alpha_asymptotic_expansion} and \eqref{eq:beta_asymptotic_expansion} with respect to $\phi$:
+\begin{align}
+    \alpha'(\phi) &= R_p\sin\phi + 2s\lambda\sin(2\phi) + \mathcal{O}(s^2), \label{eq:dalpha_dphi} \\
+    \beta'(\phi) &= R_p\cos\phi + 2s\lambda\cos(2\phi) + \mathcal{O}(s^2). \label{eq:dbeta_dphi}
+\end{align}
+Evaluating the squared metric speed $\sigma(\phi)^2 = \alpha'(\phi)^2 + \beta'(\phi)^2$:
+\begin{equation}
+    \sigma(\phi)^2 = R_p^2 + 4s\lambda R_p \left(\sin\phi\sin(2\phi) + \cos\phi\cos(2\phi)\right) + \mathcal{O}(s^2) = R_p^2 + 4s\lambda R_p \cos\phi + \mathcal{O}(s^2).
+\end{equation}
+Taking the square root:
+\begin{equation}
+    \boxed{\sigma(\phi) = R_p + 2s\lambda\cos\phi + \mathcal{O}(s^2)}.
+    \label{eq:speed_dipole}
+\end{equation}
+The metric speed forms a \textbf{pure $\cos\phi$ dipole} to first order in inclination.
+
+Computing the planar curvature magnitude:
+\begin{equation}
+    \kappa(\phi) \equiv \frac{|\alpha'\beta'' - \beta'\alpha''|}{\sigma^3} = \frac{R_p^2 + 6s\lambda R_p\cos\phi + \mathcal{O}(s^2)}{R_p^3 + 6s\lambda R_p^2\cos\phi + \mathcal{O}(s^2)} = \boxed{R_p^{-1} + \mathcal{O}(s^2)}.
+    \label{eq:curvature_invariance}
+\end{equation}
+The linear harmonic cancels identically between numerator and denominator, proving that \textbf{planar curvature magnitude is invariant to first order in inclination}.
+
+Integrating over $\phi \in [0, 2\pi]$, dipole orthogonality ($\int_0^{2\pi} \cos\phi\,d\phi = 0$) ensures:
+\begin{align}
+    P_{\rm cont}(s) - 2\pi R_p &= \int_0^{2\pi} \left(2s\lambda\cos\phi + \mathcal{O}(s^2)\right) d\phi = \boxed{\mathcal{O}(s^2)}, \label{eq:P_cont_invariance} \\
+    \mathcal{I}(s) - 2\pi R_p &= \int_0^{2\pi} \left(6s\lambda\cos\phi + \mathcal{O}(s^2)\right) d\phi = \boxed{\mathcal{O}(s^2)}, \label{eq:I_functional_invariance}
+\end{align}
+establishing that the continuous perimeter and the curvature functional are invariant to first order in observer inclination.
+
+\subsection{Global Polygonal Chord Error Formulation}
+For a $C^4$ closed curve with nowhere-vanishing metric speed ($\sigma > 0$), symmetric midpoint Euler--Maclaurin summation of chord lengths $\Delta\mathbf{r}_j = \mathbf{r}(\phi_j + h/2) - \mathbf{r}(\phi_j - h/2)$ with $h = 2\pi/N$ yields:
+\begin{equation}
+    \boxed{P_N - P_{\rm cont} = -\frac{h^2}{24}\mathcal{I} + \mathcal{O}(h^4) = -\frac{\pi^2}{6N^2}\mathcal{I} + \mathcal{O}(N^{-4})},
+    \label{eq:polygonal_chord_error_formula}
+\end{equation}
+where $\mathcal{I} \equiv \int_0^{2\pi} \kappa^2 \sigma^3\,d\phi$, with circular limit $\mathcal{I}_{\rm circle} = 2\pi R_p$ carrying dimensions of length $[L]$.
+
+\subsection{Scope and Regularity Assumptions}
+The mathematical validity of the near-polar expansions is subject to three specific regularity qualifications:
+\begin{enumerate}
+    \item \textbf{Joint Smooth Extension Assumption:} Uniform bounds on derivatives ($\|R_\alpha''\|_{C^0} = \mathcal{O}(s^2), \|R_\beta''\|_{C^0} = \mathcal{O}(s^2)$) require the endpoint-remapped coordinates to admit a jointly smooth extension in $(s, \phi)$ through $s = 0$, which is formally classified as a required regularity assumption.
+    \item \textbf{Fixed-Spin Validity:} Denominators remain non-zero for each fixed $a > 0$, but collapse as $a \to 0$ due to the $a(r - M)$ factor in $\xi(r)$. The expansions are valid for each fixed nonzero spin, but are not uniform over the open interval $0 < a \le M$.
+    \item \textbf{Subcritical Restriction for Extremal Kerr:} For extremal Kerr ($a = M$), the asymptotic expansions and polygonal chord deficit formula hold strictly for subcritical inclinations ($\theta_o < \theta_{\rm crit} \approx 47.0586^\circ$). At $\theta_o \ge \theta_{\rm crit}$, the emergence of the geometric cusp and NHEK corners destroys $C^4$ regularity.
+\end{enumerate}

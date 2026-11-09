@@ -46,7 +46,7 @@ coverage.xml
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Environments
+# Virtual Environments
 .env
 .venv
 env/
@@ -55,12 +55,35 @@ ENV/
 env.bak/
 venv.bak/
 
-# IDE files
+# IDE and OS files
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+.DS_Store
+Thumbs.db
 
-# Output data directories (preserve directory via .gitkeep if needed)
-results/*
-!results/.gitkeep
+# LaTeX build auxiliary files (in docs/report and subdirectories)
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Temporary scratch directories
+scratch/
+
+# Explicitly track essential deliverables and figures
+!docs/report/Kerr_Geodesic_Integrator_Report.pdf
+!docs/report/figures/*.pdf
+!docs/report/figures/*.png
+!output/shadow/*.pdf
+!output/shadow/*.png
+!output/shadow/*.csv

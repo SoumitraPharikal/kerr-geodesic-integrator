@@ -1,0 +1,8 @@
+sweep,branch,n_points,max_rel_err_b_eps,max_rel_err_b_raw,location_a
+135_point_initial_supported,spin=pos_pro,135,54.76,1.21592e-14,0.999842
+135_point_initial_full_range,spin=pos_pro,135,293.67,6.52089e-14,0.999997
+8000_eval_dense,spin=pos_pro,2000,67.01,1.48797e-14,+0.999873
+8000_eval_dense,spin=pos_retro,2000,1.22,2.70915e-16,+0.366300
+8000_eval_dense,spin=neg_pro,2000,67.01,1.48797e-14,-0.999873
+8000_eval_dense,spin=neg_retro,2000,1.22,2.70915e-16,-0.366300
+10001_point_uniform,spin=pos_pro,10001,96.97,2.15314e-14,0.99989100
