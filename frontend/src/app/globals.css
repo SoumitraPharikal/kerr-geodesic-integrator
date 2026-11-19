@@ -1,0 +1,193 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+/* Scientific Editorial Design Tokens (Pass A & Milestone 2F Refinement) */
+:root, [data-theme="light"] {
+  --background: #FAF9F6;
+  --surface: #FFFFFF;
+  --surface-hover: #F5F3ED;
+  --surface-subtle: #F3EFEA;
+  --border: #DEDAD2;
+  --border-subtle: #E8E4DC;
+  --foreground: #20201E;
+  --foreground-secondary: #55534F;
+  --muted: #68655F;
+  --muted-light: #7E7B74;
+
+  /* Restrained single accent (Burnt Orange / Terracotta) - used strictly for primary action, focus, and trajectory */
+  --accent: #B94A24;
+  --accent-hover: #983D1D;
+  --accent-subtle: #FBF4EE;
+  --accent-border: #E3A894;
+
+  /* Plot surface */
+  --plot-bg: #FFFFFF;
+  --plot-grid: #E8E4DC;
+  --plot-axis: #20201E;
+  --plot-trajectory: #B94A24;
+  --plot-horizon: #20201E;
+  --plot-isco: #55534F;
+  --plot-photon: #8C4418;
+
+  /* Semantic status colors (used solely for genuine status, never decorative) */
+  --status-ok: #15803D;
+  --status-ok-bg: #F0FDF4;
+  --status-ok-border: #BBF7D0;
+  --status-warn: #B45309;
+  --status-warn-bg: #FFFBEB;
+  --status-warn-border: #FDE68A;
+  --status-error: #B91C1C;
+  --status-error-bg: #FEF2F2;
+  --status-error-border: #FECACA;
+}
+
+[data-theme="dark"] {
+  --background: #0E1013;
+  --surface: #15181C;
+  --surface-hover: #1B1E23;
+  --surface-subtle: #191C21;
+  --border: #262930;
+  --border-subtle: #1E2127;
+  --foreground: #ECEFF1;
+  --foreground-secondary: #B0B5BF;
+  --muted: #9CA3AF;
+  --muted-light: #6B7280;
+
+  /* Restrained accent in dark mode */
+  --accent: #EA580C;
+  --accent-hover: #C2410C;
+  --accent-subtle: #2A170A;
+  --accent-border: #7C2D12;
+
+  /* Plot surface */
+  --plot-bg: #15181C;
+  --plot-grid: #22262E;
+  --plot-axis: #ECEFF1;
+  --plot-trajectory: #EA580C;
+  --plot-horizon: #000000;
+  --plot-isco: #64748B;
+  --plot-photon: #D97706;
+
+  /* Semantic status colors */
+  --status-ok: #4ADE80;
+  --status-ok-bg: #052E16;
+  --status-ok-border: #14532D;
+  --status-warn: #FBBF24;
+  --status-warn-bg: #451A03;
+  --status-warn-border: #78350F;
+  --status-error: #F87171;
+  --status-error-bg: #450A0A;
+  --status-error-border: #7F1D1D;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-muted: var(--muted);
+  --color-muted-light: var(--muted-light);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-border: var(--accent-border);
+  --color-status-ok: var(--status-ok);
+  --color-status-warn: var(--status-warn);
+  --color-status-error: var(--status-error);
+  --font-serif: var(--font-newsreader), "Newsreader", Georgia, Cambria, serif;
+  --font-sans: var(--font-ibm-plex-sans), "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+}
+
+html {
+  background-color: var(--background);
+  color: var(--foreground);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+/* Enforce tabular numerals on all numeric elements */
+.tabular-nums, .font-mono, td.numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Restrained hairline styling */
+.hairline {
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--border);
+}
+
+/* Accessible focus ring for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Trajectory path draw-in animation */
+@keyframes path-draw {
+  from {
+    stroke-dashoffset: 2000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-draw-in {
+  stroke-dasharray: 2000;
+  animation: path-draw 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-draw-in {
+    stroke-dasharray: none !important;
+    animation: none !important;
+  }
+}
+
+/* Minimalist scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-light);
+}
+
+/* KaTeX equations in editorial styling */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+  margin: 0.75rem 0 !important;
+}
