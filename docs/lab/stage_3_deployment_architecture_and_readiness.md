@@ -6,7 +6,8 @@
 **Role:** Deployment Architect & Implementation Agent  
 **Branch Baseline:** `feat/kerr-geodesics-lab` (`6ec673f3c3621437dcbbc1078a432b7598b141da`)  
 **Engine Release Baseline:** `v1.0.0` (`062b20c80a689640637a2fcd003bdd921a7d4132`)  
-**Status:** Safeguards Implemented and Verified — Ready for Independent Scientific Review  
+**Status:** Safeguards Implemented and Verified — Ready for Independent Scientific Review
+**Hosting Target:** \$0/month (Render Free + Vercel Hobby)
 
 ---
 
@@ -18,14 +19,15 @@ The Kerr Geodesics Lab application comprises two decoupled components:
 
 To accommodate different operational goals and licensing constraints, two distinct deployment paths are evaluated:
 
-### Choice A: Lowest-Cost Public Demonstration ($0.00 / month)
+### Choice A: $0/month Public Demonstration (Selected Configuration)
 * **Frontend:** **Vercel Hobby ($0/month)** — *Eligible strictly for personal, non-commercial use.*
 * **Backend:** **Render Free Web Service ($0/month)** — *512 MB RAM, 0.1 vCPU, 750 free instance hours/month.*
 * **Operational Reality:** Free web services on Render automatically spin down after 15 minutes of inactivity. When a new user arrives, the initial request triggers a container cold start taking **approximately one minute (30–60 seconds)** before presets load. This tier is suitable only for zero-budget personal demonstrations where cold-start latency is acceptable.
+* **Cost Risk:** If the workspace exhausts 750 free instance hours in a calendar month, Render suspends the service until the next billing cycle. No charges are incurred; the service simply becomes unavailable.
 
 ### Choice B: Reliable Always-On Public Deployment ($5.00 – $7.00 / month)
 * **Frontend:** **Vercel Hobby ($0/month)** (or **Vercel Pro at $20/month** if commercial).
-* **Backend:** **Render Starter ($7/month flat)** or **Railway Hobby ($5/month minimum base)**.
+* **Backend:** **Render Starter ($7/month flat)** or **Railway Hobby ($5/month minimum base)**. *(Not selected for this deployment.)*
 * **Operational Reality:** Eliminates sleeping containers and cold starts. The backend container remains resident in memory 24/7, providing instant sub-second responses for simulation presets, parameter adjustments, and shadow boundary computations.
 
 ---
@@ -229,13 +231,15 @@ The affine-span limits (`100.0` for unstable photon orbits and `500.0` for timel
 | `NEXT_PUBLIC_API_BASE_URL` | Frontend | Build-time (Vercel) | `https://kerr-api.onrender.com` | Base URL of the live FastAPI backend inlined into client JavaScript bundles at build time. |
 
 ### 5.2 Render Web Service Configuration (Backend)
-- **Service Type:** Web Service (always-on)
-- **Plan:** Starter ($7/mo; eliminates scale-to-zero cold starts)
+- **Service Type:** Web Service (free tier — spins down after 15 minutes of inactivity)
+- **Plan:** Free ($0/mo; 512 MB RAM, 0.1 vCPU; 750 free instance hours/month per workspace)
+- **Cold-Start Behavior:** After 15 minutes of zero inbound traffic, Render shuts down the container. The next inbound request triggers a cold start of approximately 30–60 seconds while the container boots and loads the Python/SciPy stack. The frontend 25-second simulation timeout will expire during a cold start; the user will see a timeout/network error on first request. The second request (after warm-up) succeeds normally.
+- **No Persistent Filesystem:** The free tier provides no persistent disk. The API is fully stateless and requires no disk storage.
 - **Runtime:** Python 3.13.5 (matches tested environment)
 - **Build Command:** `pip install --upgrade pip && pip install ".[api]"`
 - **Start Command:** `uvicorn geodesics.api.app:app --host 0.0.0.0 --port $PORT`
 - **Health Check Path:** `/health`
-- **Auto-Deploy & Branch Linking:** Render auto-deploys from git branches (not tags). `branch: main` is specified, and auto-deploy is explicitly disabled (`autoDeployTrigger: "off"`) pending manual authorization.
+- **Auto-Deploy & Branch Linking:** Render auto-deploys from git branches (not tags). `branch: master` is specified in `render.yaml`, and auto-deploy is explicitly disabled (`autoDeployTrigger: "off"`) pending manual authorization.
 - **Blueprint Specification:** Provided in repository root [`render.yaml`](../../render.yaml) with `sync: false` for `CORS_ALLOWED_ORIGINS` to prevent hardcoding future domains in git.
 - **Blueprint Schema Provenance:** Validated locally via [`scripts/validate_blueprint.py`](../../scripts/validate_blueprint.py) against a bundled copy of the official Render Blueprint JSON Schema ([`render_schema.json`](../../render_schema.json), untracked local cache retrieved from `https://render.com/schema/render.yaml.json` on `2026-11-25`). JSON Schema validation confirms structural and enum conformance only; it does not prove cloud service provisioning or live deployment success.
 
@@ -292,8 +296,8 @@ After the automated smoke-test script passes, perform manual browser checks on t
    Because Python evaluates the geodesic equations of motion (`hamiltonian_rhs`) during Runge-Kutta stepping, the Python Global Interpreter Lock (GIL) is partially acquired during integration. Multiple concurrent simulation requests on a fractional-vCPU instance (Render Free/Starter) will contend for CPU, increasing per-request response times.
 2. **Stateless Execution:**  
    The API has zero database or disk persistence. Every simulation request is integrated fresh in memory. Decimated trajectories are returned directly to the client without server-side caching.
-3. **Cold Starts on Free Tier vs Always-On Starter:**  
-   On Render Free tier, containers spin down after 15 minutes of inactivity, causing a 30–60 second cold start that triggers the frontend 25s timeout. The Starter tier ($7/mo) runs continuously without scale-to-zero sleeping, ensuring instant response.
+3. **Cold Starts on Render Free Tier:**
+   On Render Free tier, containers spin down after 15 minutes of inactivity, causing a 30–60 second cold start. The frontend 25-second timeout will expire on first contact after a sleep period; the user receives a timeout error. The backend warms up in the background and the second request succeeds normally. This is an expected and documented limitation of the $0 free-tier deployment. Users should be advised of potential first-request latency.
 
 ---
 
@@ -328,7 +332,7 @@ All application source code, API schemas, integration safeguards, configuration 
 1. **Branch Merge & Release Promotion:**
    The working feature branch `feat/kerr-geodesics-lab` must be approved and merged into `main`. The underlying `v1.0.0` physics engine release remains strictly pinned to `062b20c80a689640637a2fcd003bdd921a7d4132`.
 2. **Backend Service Creation on Render:**
-   The Web Service must be provisioned via `render.yaml` Blueprint or dashboard linking `branch: main`, selecting `plan: starter` ($7/mo always-on; 0.5 CPU / 512 MB RAM), and setting `PYTHON_VERSION=3.13.5`.
+   The Web Service must be provisioned via `render.yaml` Blueprint or dashboard linking `branch: master`, selecting `plan: free` ($0/mo; 512 MB RAM, 0.1 vCPU), and setting `PYTHON_VERSION=3.13.5`. The free tier spins down after 15 minutes of inactivity.
 3. **CORS Origin Configuration:**
    Because production CORS fails closed when `CORS_ALLOWED_ORIGINS` is missing or empty, the exact production Vercel domain(s) must be manually populated in Render environment settings before serving client traffic.
 4. **Vercel Build-Time Environment Variable Inlining:**

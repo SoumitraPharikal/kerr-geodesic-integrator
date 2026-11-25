@@ -6,7 +6,7 @@ services:
   - type: web
     name: kerr-geodesics-api
     runtime: python
-    plan: starter # 0.5 CPU, 512 MB RAM ($7/mo always-on; avoids free-tier cold starts)
+    plan: free # 512 MB RAM, 0.1 vCPU; spins down after 15 min inactivity (~30-60s cold start); 750 free instance hours/month
     region: oregon
     branch: master # Explicitly links the canonical integration branch (confirmed: no 'main' branch exists)
     autoDeployTrigger: "off" # Manual deployment only; auto-deploy disabled pending explicit authorization
