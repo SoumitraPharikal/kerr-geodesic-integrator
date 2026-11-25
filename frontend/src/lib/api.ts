@@ -132,14 +132,26 @@ export interface ApiErrorResponse {
   details?: ApiErrorDetail[] | unknown;
 }
 
+export type ApiErrorType =
+  | "timeout_error"
+  | "network_unreachable"
+  | "abort_error"
+  | "invalid_request_parameters"
+  | "unphysical_configuration"
+  | "unsupported_preset"
+  | "numerical_integration_failure"
+  | "internal_error"
+  | "http_error"
+  | string;
+
 export class ApiError extends Error {
-  errorType: string;
+  errorType: ApiErrorType;
   details?: unknown;
   statusCode?: number;
 
   constructor(
     message: string,
-    errorType: string = "connection_error",
+    errorType: ApiErrorType = "network_unreachable",
     statusCode?: number,
     details?: unknown
   ) {
@@ -149,167 +161,269 @@ export class ApiError extends Error {
     this.statusCode = statusCode;
     this.details = details;
   }
+
+  get isTimeout(): boolean {
+    return this.errorType === "timeout_error" || this.statusCode === 408;
+  }
+
+  get isNetworkError(): boolean {
+    return this.errorType === "network_unreachable" || this.errorType === "connection_error";
+  }
+
+  get isValidationError(): boolean {
+    return (
+      this.statusCode === 422 ||
+      this.errorType === "invalid_request_parameters" ||
+      this.errorType === "unphysical_configuration"
+    );
+  }
+
+  get isServerError(): boolean {
+    return (
+      (this.statusCode !== undefined && this.statusCode >= 500) ||
+      this.errorType === "internal_error" ||
+      this.errorType === "numerical_integration_failure"
+    );
+  }
+
+  get isAborted(): boolean {
+    return this.errorType === "abort_error";
+  }
 }
+
+export interface RequestOptions {
+  timeoutMs?: number;
+  signal?: AbortSignal;
+}
+
+export const DEFAULT_SIMULATION_TIMEOUT_MS = 25000; // 25s for ODE integration
+export const DEFAULT_METADATA_TIMEOUT_MS = 10000;   // 10s for health & catalogue checks
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || "http://127.0.0.1:8000";
 
 /**
+ * Execute an HTTP request with explicit timeout bounding and AbortSignal support.
+ */
+export async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+  externalSignal?: AbortSignal
+): Promise<Response> {
+  const controller = new AbortController();
+  let timedOut = false;
+
+  const onExternalAbort = () => {
+    controller.abort();
+  };
+
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      throw new ApiError("Request was cancelled.", "abort_error", 499);
+    }
+    externalSignal.addEventListener("abort", onExternalAbort);
+  }
+
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    const res = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+    return res;
+  } catch (err: unknown) {
+    if (err instanceof ApiError) throw err;
+
+    if (timedOut) {
+      throw new ApiError(
+        `Request timed out after ${timeoutMs / 1000}s. The scientific engine took too long to complete the calculation.`,
+        "timeout_error",
+        408
+      );
+    }
+    if (externalSignal?.aborted) {
+      throw new ApiError("Request was cancelled.", "abort_error", 499);
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    throw new ApiError(
+      `Failed to communicate with engine at ${url}: ${message}. The backend server may be offline or unreachable.`,
+      "network_unreachable"
+    );
+  } finally {
+    clearTimeout(timer);
+    if (externalSignal) {
+      externalSignal.removeEventListener("abort", onExternalAbort);
+    }
+  }
+}
+
+/**
  * Fetch health status and engine provenance from GET /health.
  */
-export async function fetchHealth(): Promise<HealthResponse> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/health`, {
+export async function fetchHealth(options?: RequestOptions): Promise<HealthResponse> {
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_METADATA_TIMEOUT_MS;
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/health`,
+    {
       method: "GET",
       headers: { Accept: "application/json" },
       cache: "no-store",
-    });
+    },
+    timeoutMs,
+    options?.signal
+  );
 
-    if (!res.ok) {
-      let errData: ApiErrorResponse | null = null;
-      try {
-        errData = await res.json();
-      } catch {
-        // Non-JSON response
-      }
-      throw new ApiError(
-        errData?.message || `Backend returned HTTP status ${res.status} (${res.statusText})`,
-        errData?.error_type || "http_error",
-        res.status,
-        errData?.details
-      );
+  if (!res.ok) {
+    let errData: ApiErrorResponse | null = null;
+    try {
+      errData = await res.json();
+    } catch {
+      // Non-JSON response
     }
-
-    const data: HealthResponse = await res.json();
-    return data;
-  } catch (err: unknown) {
-    if (err instanceof ApiError) throw err;
     throw new ApiError(
-      `The scientific computation engine is currently offline or unreachable at ${API_BASE_URL}. Please ensure the FastAPI backend is running (uvicorn geodesics.api.app:app --port 8000).`,
-      "network_unreachable"
+      errData?.message || `Backend returned HTTP status ${res.status} (${res.statusText})`,
+      errData?.error_type || (res.status >= 500 ? "internal_error" : "http_error"),
+      res.status,
+      errData?.details
     );
   }
+
+  const data: HealthResponse = await res.json();
+  return data;
 }
 
 /**
  * Fetch the registered simulation preset catalogue from GET /api/v1/presets.
  */
-export async function fetchPresetCatalogue(): Promise<PresetCatalogueResponse> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/presets`, {
+export async function fetchPresetCatalogue(
+  options?: RequestOptions
+): Promise<PresetCatalogueResponse> {
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_METADATA_TIMEOUT_MS;
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/v1/presets`,
+    {
       method: "GET",
       headers: { Accept: "application/json" },
       cache: "no-store",
-    });
+    },
+    timeoutMs,
+    options?.signal
+  );
 
-    if (!res.ok) {
-      let errData: ApiErrorResponse | null = null;
-      try {
-        errData = await res.json();
-      } catch {
-        // Non-JSON response
-      }
-      throw new ApiError(
-        errData?.message || `Failed to fetch presets: HTTP ${res.status}`,
-        errData?.error_type || "http_error",
-        res.status,
-        errData?.details
-      );
+  if (!res.ok) {
+    let errData: ApiErrorResponse | null = null;
+    try {
+      errData = await res.json();
+    } catch {
+      // Non-JSON response
     }
-
-    const data: PresetCatalogueResponse = await res.json();
-    return data;
-  } catch (err: unknown) {
-    if (err instanceof ApiError) throw err;
     throw new ApiError(
-      `Could not retrieve simulation presets from ${API_BASE_URL}/api/v1/presets. The backend server appears offline.`,
-      "network_unreachable"
+      errData?.message || `Failed to fetch presets: HTTP ${res.status}`,
+      errData?.error_type || (res.status >= 500 ? "internal_error" : "http_error"),
+      res.status,
+      errData?.details
     );
   }
+
+  const data: PresetCatalogueResponse = await res.json();
+  return data;
 }
 
 /**
  * Submit a simulation execution request to POST /api/v1/simulations.
  */
 export async function postSimulation(
-  request: SimulationRequest
+  request: SimulationRequest,
+  options?: RequestOptions
 ): Promise<SimulationResponse> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/simulations`, {
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_SIMULATION_TIMEOUT_MS;
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/v1/simulations`,
+    {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
       body: JSON.stringify(request),
-    });
+    },
+    timeoutMs,
+    options?.signal
+  );
 
-    if (!res.ok) {
-      let errData: ApiErrorResponse | null = null;
-      try {
-        errData = await res.json();
-      } catch {
-        // Non-JSON response
-      }
-      throw new ApiError(
-        errData?.message || `Simulation failed: HTTP ${res.status} (${res.statusText})`,
-        errData?.error_type || "simulation_error",
-        res.status,
-        errData?.details
-      );
+  if (!res.ok) {
+    let errData: ApiErrorResponse | null = null;
+    try {
+      errData = await res.json();
+    } catch {
+      // Non-JSON response
     }
-
-    const data: SimulationResponse = await res.json();
-    return data;
-  } catch (err: unknown) {
-    if (err instanceof ApiError) throw err;
+    const defaultType =
+      res.status === 422
+        ? "invalid_request_parameters"
+        : res.status >= 500
+        ? "internal_error"
+        : "simulation_error";
     throw new ApiError(
-      `Failed to communicate with simulation engine at ${API_BASE_URL}/api/v1/simulations: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-      "simulation_network_error"
+      errData?.message || `Simulation failed: HTTP ${res.status} (${res.statusText})`,
+      errData?.error_type || defaultType,
+      res.status,
+      errData?.details
     );
   }
+
+  const data: SimulationResponse = await res.json();
+  return data;
 }
 
 /**
  * Submit an analytical shadow boundary request to POST /api/v1/shadows.
  */
-export async function postShadow(request: ShadowRequest): Promise<ShadowResponse> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/shadows`, {
+export async function postShadow(
+  request: ShadowRequest,
+  options?: RequestOptions
+): Promise<ShadowResponse> {
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_METADATA_TIMEOUT_MS;
+  const res = await fetchWithTimeout(
+    `${API_BASE_URL}/api/v1/shadows`,
+    {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
       body: JSON.stringify(request),
-    });
+    },
+    timeoutMs,
+    options?.signal
+  );
 
-    if (!res.ok) {
-      let errData: ApiErrorResponse | null = null;
-      try {
-        errData = await res.json();
-      } catch {
-        // Non-JSON response
-      }
-      throw new ApiError(
-        errData?.message || `Shadow calculation failed: HTTP ${res.status}`,
-        errData?.error_type || "shadow_error",
-        res.status,
-        errData?.details
-      );
+  if (!res.ok) {
+    let errData: ApiErrorResponse | null = null;
+    try {
+      errData = await res.json();
+    } catch {
+      // Non-JSON response
     }
-
-    const data: ShadowResponse = await res.json();
-    return data;
-  } catch (err: unknown) {
-    if (err instanceof ApiError) throw err;
+    const defaultType =
+      res.status === 422
+        ? "invalid_request_parameters"
+        : res.status >= 500
+        ? "internal_error"
+        : "shadow_error";
     throw new ApiError(
-      `Failed to communicate with shadow engine at ${API_BASE_URL}/api/v1/shadows: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-      "shadow_network_error"
+      errData?.message || `Shadow calculation failed: HTTP ${res.status}`,
+      errData?.error_type || defaultType,
+      res.status,
+      errData?.details
     );
   }
+
+  const data: ShadowResponse = await res.json();
+  return data;
 }

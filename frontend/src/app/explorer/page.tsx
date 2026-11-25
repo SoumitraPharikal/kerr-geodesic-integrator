@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import ScientificPlot from "@/components/ScientificPlot";
 import {
@@ -52,9 +52,19 @@ function ExplorerContent() {
   const [showEventJson, setShowEventJson] = useState<boolean>(false);
   const [showProvenanceDrawer, setShowProvenanceDrawer] = useState<boolean>(false);
 
+  // Active simulation abort controller ref
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Execute simulation against POST /api/v1/simulations
   const runSimulation = useCallback(
     async (overrideParams?: Record<string, number>, targetPresetId?: string) => {
+      // Abort previous in-flight request if user rapidly re-triggers simulation
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setIsSimulating(true);
       setSimError(null);
 
@@ -62,23 +72,42 @@ function ExplorerContent() {
       const activeParams = overrideParams || params;
 
       try {
-        const res = await postSimulation({
-          preset_id: activePresetId,
-          parameters: activeParams,
-        });
-        setSimulationData(res);
+        const res = await postSimulation(
+          {
+            preset_id: activePresetId,
+            parameters: activeParams,
+          },
+          { signal: controller.signal }
+        );
+        if (!controller.signal.aborted) {
+          setSimulationData(res);
+        }
       } catch (err: unknown) {
         if (err instanceof ApiError) {
-          setSimError(err.message);
+          if (!err.isAborted) {
+            setSimError(err.message);
+          }
         } else {
           setSimError("Failed to communicate with the simulation engine.");
         }
       } finally {
-        setIsSimulating(false);
+        if (abortControllerRef.current === controller) {
+          setIsSimulating(false);
+          abortControllerRef.current = null;
+        }
       }
     },
     [selectedPresetId, params]
   );
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   // Load preset catalogue on mount
   useEffect(() => {

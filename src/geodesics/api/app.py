@@ -8,7 +8,8 @@ Stateless scientific API providing:
 - Structured error handling with zero stack-trace leakage
 """
 
-from typing import Any, Dict, Union
+import os
+from typing import Any, Dict, List, Optional, Union
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -67,7 +68,67 @@ def _format_validation_response(exc: Union[RequestValidationError, ValidationErr
     )
 
 
-def create_app() -> FastAPI:
+DEFAULT_DEV_ORIGINS: List[str] = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+]
+
+
+def parse_cors_origins(
+    raw: Optional[str] = None,
+    environment: Optional[str] = None,
+) -> List[str]:
+    """Parse comma-separated CORS allowed origins from environment.
+
+    Requirements:
+    - Trims whitespace and discards empty entries.
+    - Strictly rejects wildcard '*' to prevent insecure deployment configuration.
+    - In production mode (ENVIRONMENT='production' or APP_ENV='production'):
+      requires an explicit, nonempty CORS_ALLOWED_ORIGINS. Fails closed with RuntimeError
+      if absent, empty, or whitespace-only.
+    - In development mode: falls back to DEFAULT_DEV_ORIGINS when unset or empty.
+    """
+    if environment is None:
+        environment = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "development"))
+
+    is_production = environment.strip().lower() in ("production", "prod")
+
+    if raw is None:
+        raw = os.getenv("CORS_ALLOWED_ORIGINS")
+
+    if raw is None or not raw.strip():
+        if is_production:
+            raise RuntimeError(
+                "In production mode (ENVIRONMENT='production'), CORS_ALLOWED_ORIGINS must be set "
+                "to an explicit, non-empty list of origins. Startup aborted to prevent insecure open access."
+            )
+        return list(DEFAULT_DEV_ORIGINS)
+
+    tokens = [item.strip() for item in raw.split(",") if item.strip()]
+
+    if any(t == "*" for t in tokens):
+        raise ValueError(
+            "Wildcard CORS origin '*' is strictly prohibited for Kerr Geodesics Lab deployments."
+        )
+
+    if not tokens:
+        if is_production:
+            raise RuntimeError(
+                "In production mode (ENVIRONMENT='production'), CORS_ALLOWED_ORIGINS must be set "
+                "to an explicit, non-empty list of origins (received empty or whitespace-only value). "
+                "Startup aborted to prevent insecure open access."
+            )
+        return list(DEFAULT_DEV_ORIGINS)
+
+    return tokens
+
+
+def create_app(
+    cors_origins: Optional[List[str]] = None,
+    environment: Optional[str] = None,
+) -> FastAPI:
     """Factory creating and configuring the Kerr Geodesics Lab FastAPI application."""
     app = FastAPI(
         title="Kerr Geodesics Lab API",
@@ -77,18 +138,18 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
-    # Enable CORS for local Next.js frontend development
+    # Configure CORS origins: fail-closed in production, dev defaults in development
+    if cors_origins is not None:
+        allowed_origins = cors_origins
+    else:
+        allowed_origins = parse_cors_origins(environment=environment)
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost:3001",
-            "http://127.0.0.1:3001",
-        ],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=allowed_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Accept", "Authorization"],
     )
 
     # -------------------------------------------------------------------------

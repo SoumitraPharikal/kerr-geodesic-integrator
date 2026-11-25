@@ -10,7 +10,7 @@ Strict typed schemas for:
 """
 
 import math
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Final, List, Optional, Tuple, Union
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -23,6 +23,23 @@ from geodesics.metrics.kerr import KerrMetric
 
 
 # -----------------------------------------------------------------------------
+# Workload Safeguard Constants: Maximum Permissible Affine Parameter Spans
+# -----------------------------------------------------------------------------
+# Bound timelike orbits (ISCO, precession, Kerr circular) to 500M (~4-8 full orbits,
+# taking ~2-3s local CPU, safely avoiding serverless and worker threadpool timeouts).
+MAX_TIMELIKE_AFFINE_SPAN: Final[float] = 500.0
+
+# Bound dynamically unstable circular photon orbits to 100M (numerical perturbation
+# causes trajectory departure within lambda ~ 40-80; 100M captures the full physical
+# instability lifespan without open-ended CPU expenditure).
+MAX_UNSTABLE_PHOTON_AFFINE_SPAN: Final[float] = 100.0
+
+# Bound scattering trajectories to 500M (permits multi-whirl near-critical orbits
+# before the solver automatically halts at escape radius r=100M or event horizon cutoff).
+MAX_SCATTERING_AFFINE_SPAN: Final[float] = 500.0
+
+
+# -----------------------------------------------------------------------------
 # Base Presets and Validation Models
 # -----------------------------------------------------------------------------
 
@@ -30,7 +47,12 @@ class SchwarzschildIscoParams(BaseModel):
     """Parameters for the Schwarzschild ISCO circular timelike orbit preset."""
 
     mass: float = Field(default=1.0, gt=0, description="Central black hole mass M > 0")
-    affine_span: float = Field(default=50.0, gt=0, description="Integration affine parameter span")
+    affine_span: float = Field(
+        default=50.0,
+        gt=0,
+        le=MAX_TIMELIKE_AFFINE_SPAN,
+        description=f"Integration affine parameter span (0 < affine_span <= {MAX_TIMELIKE_AFFINE_SPAN})",
+    )
 
     model_config = ConfigDict(extra="forbid")
 
@@ -44,7 +66,12 @@ class SchwarzschildPrecessionParams(BaseModel):
     mass: float = Field(default=1.0, gt=0, description="Central black hole mass M > 0")
     radius: float = Field(default=8.0, gt=0, description="Initial orbital coordinate radius r > 6M")
     delta_pr: float = Field(default=0.001, description="Radial momentum perturbation delta_pr")
-    affine_span: float = Field(default=100.0, gt=0, description="Integration affine parameter span")
+    affine_span: float = Field(
+        default=100.0,
+        gt=0,
+        le=MAX_TIMELIKE_AFFINE_SPAN,
+        description=f"Integration affine parameter span (0 < affine_span <= {MAX_TIMELIKE_AFFINE_SPAN})",
+    )
 
     model_config = ConfigDict(extra="forbid")
 
@@ -73,7 +100,12 @@ class SchwarzschildPhotonSphereParams(BaseModel):
 
     mass: float = Field(default=1.0, gt=0, description="Central black hole mass M > 0")
     energy: float = Field(default=1.0, gt=0, description="Conserved photon energy E > 0")
-    affine_span: float = Field(default=12.0, gt=0, description="Integration affine parameter span")
+    affine_span: float = Field(
+        default=12.0,
+        gt=0,
+        le=MAX_UNSTABLE_PHOTON_AFFINE_SPAN,
+        description=f"Integration affine parameter span (0 < affine_span <= {MAX_UNSTABLE_PHOTON_AFFINE_SPAN})",
+    )
 
     model_config = ConfigDict(extra="forbid")
 
@@ -84,7 +116,12 @@ class KerrProgradePhotonParams(BaseModel):
     mass: float = Field(default=1.0, gt=0, description="Central black hole mass M > 0")
     spin: float = Field(default=0.9, ge=0.0, description="Spacetime spin parameter 0 <= a < M")
     energy: float = Field(default=1.0, gt=0, description="Conserved photon energy E > 0")
-    affine_span: float = Field(default=20.0, gt=0, description="Integration affine parameter span")
+    affine_span: float = Field(
+        default=20.0,
+        gt=0,
+        le=MAX_UNSTABLE_PHOTON_AFFINE_SPAN,
+        description=f"Integration affine parameter span (0 < affine_span <= {MAX_UNSTABLE_PHOTON_AFFINE_SPAN})",
+    )
 
     model_config = ConfigDict(extra="forbid")
 
@@ -103,7 +140,12 @@ class KerrRetrogradePhotonParams(BaseModel):
     mass: float = Field(default=1.0, gt=0, description="Central black hole mass M > 0")
     spin: float = Field(default=0.9, ge=0.0, description="Spacetime spin parameter 0 <= a <= M")
     energy: float = Field(default=1.0, gt=0, description="Conserved photon energy E > 0")
-    affine_span: float = Field(default=30.0, gt=0, description="Integration affine parameter span")
+    affine_span: float = Field(
+        default=30.0,
+        gt=0,
+        le=MAX_UNSTABLE_PHOTON_AFFINE_SPAN,
+        description=f"Integration affine parameter span (0 < affine_span <= {MAX_UNSTABLE_PHOTON_AFFINE_SPAN})",
+    )
 
     model_config = ConfigDict(extra="forbid")
 
@@ -122,7 +164,12 @@ class KerrCircularTimelikeParams(BaseModel):
     mass: float = Field(default=1.0, gt=0, description="Central black hole mass M > 0")
     spin: float = Field(default=0.9, ge=0.0, description="Spacetime spin parameter 0 <= a < M")
     radius: Optional[float] = Field(default=None, description="Orbital coordinate radius r > r_ISCO. If None, defaults to 6.0*M or r_ISCO + 1.0*M")
-    affine_span: float = Field(default=100.0, gt=0, description="Integration affine parameter span")
+    affine_span: float = Field(
+        default=100.0,
+        gt=0,
+        le=MAX_TIMELIKE_AFFINE_SPAN,
+        description=f"Integration affine parameter span (0 < affine_span <= {MAX_TIMELIKE_AFFINE_SPAN})",
+    )
 
     model_config = ConfigDict(extra="forbid")
 
@@ -153,7 +200,12 @@ class KerrEquatorialScatteringParams(BaseModel):
     impact_parameter: float = Field(default=4.5, description="Signed impact parameter b = L_z / E")
     r0: float = Field(default=50.0, gt=0, description="Initial emission radius r0 >= 10M")
     energy: float = Field(default=1.0, gt=0, description="Conserved photon energy E > 0")
-    affine_span: float = Field(default=200.0, gt=0, description="Integration affine parameter span")
+    affine_span: float = Field(
+        default=200.0,
+        gt=0,
+        le=MAX_SCATTERING_AFFINE_SPAN,
+        description=f"Integration affine parameter span (0 < affine_span <= {MAX_SCATTERING_AFFINE_SPAN})",
+    )
 
     model_config = ConfigDict(extra="forbid")
 
