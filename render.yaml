@@ -8,7 +8,7 @@ services:
     runtime: python
     plan: starter # 0.5 CPU, 512 MB RAM ($7/mo always-on; avoids free-tier cold starts)
     region: oregon
-    branch: main # Explicitly links the eventual release branch, not the working feature branch
+    branch: master # Explicitly links the canonical integration branch (confirmed: no 'main' branch exists)
     autoDeployTrigger: "off" # Manual deployment only; auto-deploy disabled pending explicit authorization
     buildCommand: pip install --upgrade pip && pip install ".[api]"
     startCommand: uvicorn geodesics.api.app:app --host 0.0.0.0 --port $PORT
