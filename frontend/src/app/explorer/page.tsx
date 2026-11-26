@@ -367,7 +367,9 @@ function ExplorerContent() {
                     )}
                   </select>
                   <p className="mt-1 text-xs text-[var(--muted)] font-sans leading-tight">
-                    {currentPreset.description}
+                    {presetLoading
+                      ? "Connecting to backend... (If sleeping on Render Free, waking the container takes ~30–60s)"
+                      : currentPreset.description}
                   </p>
                 </div>
 

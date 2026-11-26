@@ -235,9 +235,12 @@ export function ScientificPlot({
       <div className="relative flex-1 p-2 flex items-center justify-center bg-[var(--plot-bg)] min-h-[460px] select-none">
         {/* Loading overlay */}
         {isLoading && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[var(--surface)]/75 backdrop-blur-[1px] text-[var(--foreground)]">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[var(--surface)]/75 backdrop-blur-[1px] text-[var(--foreground)] p-4 text-center">
             <span className="font-serif text-sm">Computing trajectory...</span>
             <span className="font-mono text-xs text-[var(--muted)] mt-1">Adaptive DOP853 integrator</span>
+            <span className="font-sans text-[11px] text-[var(--muted)] mt-2 max-w-xs">
+              First request may take up to ~60s if the free-tier backend is waking from idle.
+            </span>
           </div>
         )}
 
@@ -245,7 +248,9 @@ export function ScientificPlot({
         {error && !isLoading && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[var(--surface)]/90 p-6 text-center">
             <p className="font-serif text-sm font-medium text-[var(--status-error)]">
-              Simulation unavailable
+              {error.toLowerCase().includes("wake") || error.toLowerCase().includes("readiness")
+                ? "Backend Wake-Up Timed Out"
+                : "Simulation unavailable"}
             </p>
             <p className="font-mono text-xs text-[var(--muted)] mt-1 max-w-md">
               {error}

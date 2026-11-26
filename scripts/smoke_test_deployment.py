@@ -12,12 +12,18 @@ Implemented Checks:
 8. Production CORS preflight OPTIONS omits allow-origin for unapproved origin (when origin/frontend-url provided).
 9-16. Frontend pages return HTTP 200 across all 8 primary routes (optional; run when --frontend-url provided, otherwise marked SKIP).
 
+Render Free Cold-Start Tolerance:
+- Configurable per-request timeout via `--timeout` (default: 25.0s, matching the 25s simulation timeout).
+- Optional bounded readiness polling via `--wait-for-health` (default max-wait: 90.0s) to tolerate 30–60s Render Free container wake-up before running checks.
+- Zero silent retries of expensive simulation or shadow calculations.
+
 Zero third-party dependencies required (uses standard library urllib.request).
 """
 
 import argparse
 import json
 import sys
+import time
 import urllib.error
 import urllib.request
 from typing import Any, Dict, Optional, Tuple
@@ -28,6 +34,7 @@ def _http_request(
     method: str = "GET",
     data: Optional[Dict[str, Any]] = None,
     headers: Optional[Dict[str, str]] = None,
+    timeout: float = 25.0,
 ) -> Tuple[int, Dict[str, str], bytes]:
     """Execute HTTP request and return (status_code, headers_dict, body_bytes)."""
     req_headers = {"User-Agent": "Kerr-Deployment-SmokeTest/1.0"}
@@ -43,18 +50,56 @@ def _http_request(
     req = urllib.request.Request(url, data=body_bytes, headers=req_headers, method=method)
 
     try:
-        with urllib.request.urlopen(req, timeout=15) as response:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
             resp_headers = {k.lower(): v for k, v in response.getheaders()}
             return response.status, resp_headers, response.read()
     except urllib.error.HTTPError as e:
         resp_headers = {k.lower(): v for k, v in e.headers.items()} if e.headers else {}
         return e.code, resp_headers, e.read()
+    except TimeoutError as e:
+        raise TimeoutError(f"HTTP request to {url} timed out after {timeout:.1f}s") from e
+    except urllib.error.URLError as e:
+        if "timed out" in str(e).lower():
+            raise TimeoutError(f"HTTP request to {url} timed out after {timeout:.1f}s: {e}") from e
+        raise ConnectionError(f"Connection failure to {url} (timeout={timeout:.1f}s): {e}") from e
     except Exception as e:
-        print(f"Connection failure to {url}: {e}")
-        raise
+        raise RuntimeError(f"Request error to {url} (timeout={timeout:.1f}s): {e}") from e
 
 
-def run_smoke_tests(api_url: str, frontend_url: Optional[str] = None, allowed_origin: Optional[str] = None) -> bool:
+def poll_health_readiness(
+    api_url: str,
+    max_wait_seconds: float = 90.0,
+    poll_interval: float = 3.0,
+) -> bool:
+    """Bounded readiness polling for /health to tolerate Render Free container spin-up (30-60s)."""
+    print(f"Waiting for backend readiness at {api_url}/health (up to {max_wait_seconds:.0f}s)...")
+    start = time.time()
+    attempts = 0
+    while time.time() - start < max_wait_seconds:
+        attempts += 1
+        elapsed = time.time() - start
+        try:
+            code, _, body = _http_request(f"{api_url}/health", timeout=min(10.0, max_wait_seconds))
+            if code == 200:
+                data = json.loads(body.decode("utf-8"))
+                if data.get("status") == "ok":
+                    print(f"Backend is ready after {elapsed:.1f}s ({attempts} probe attempts).\n")
+                    return True
+        except Exception:
+            pass
+        time.sleep(poll_interval)
+    print(f"WARNING: Backend /health was not ready within {max_wait_seconds:.0f}s. Proceeding to test suite...\n")
+    return False
+
+
+def run_smoke_tests(
+    api_url: str,
+    frontend_url: Optional[str] = None,
+    allowed_origin: Optional[str] = None,
+    timeout: float = 25.0,
+    wait_for_health: bool = False,
+    max_wait: float = 90.0,
+) -> bool:
     api_url = api_url.rstrip("/")
     if frontend_url:
         frontend_url = frontend_url.rstrip("/")
@@ -66,7 +111,12 @@ def run_smoke_tests(api_url: str, frontend_url: Optional[str] = None, allowed_or
     print(f"Backend API Target: {api_url}")
     print(f"Frontend Target:    {frontend_url or '(skipped)'}")
     print(f"Approved Origin:    {allowed_origin or '(not specified)'}")
+    print(f"Per-Request Timeout:{timeout:.1f}s")
+    print(f"Health Poll on Boot:{'Enabled (up to ' + str(max_wait) + 's)' if wait_for_health else 'Disabled'}")
     print("=" * 70 + "\n")
+
+    if wait_for_health:
+        poll_health_readiness(api_url, max_wait_seconds=max_wait)
 
     passed_checks = 0
     total_checks = 0
@@ -83,7 +133,7 @@ def run_smoke_tests(api_url: str, frontend_url: Optional[str] = None, allowed_or
 
     # 1. Health & Provenance
     try:
-        code, _, body = _http_request(f"{api_url}/health")
+        code, _, body = _http_request(f"{api_url}/health", timeout=timeout)
         data = json.loads(body.decode("utf-8")) if code == 200 else {}
         check(
             "Backend Health & Engine Provenance",
@@ -95,7 +145,7 @@ def run_smoke_tests(api_url: str, frontend_url: Optional[str] = None, allowed_or
 
     # 2. Preset Catalogue
     try:
-        code, _, body = _http_request(f"{api_url}/api/v1/presets")
+        code, _, body = _http_request(f"{api_url}/api/v1/presets", timeout=timeout)
         data = json.loads(body.decode("utf-8")) if code == 200 else {}
         presets = data.get("presets", [])
         expected_ids = {
@@ -122,6 +172,7 @@ def run_smoke_tests(api_url: str, frontend_url: Optional[str] = None, allowed_or
             f"{api_url}/api/v1/simulations",
             method="POST",
             data={"preset_id": "schwarzschild_isco_circular", "parameters": {"mass": 1.0, "affine_span": 10.0}},
+            timeout=timeout,
         )
         data = json.loads(body.decode("utf-8")) if code == 200 else {}
         check(
@@ -138,6 +189,7 @@ def run_smoke_tests(api_url: str, frontend_url: Optional[str] = None, allowed_or
             f"{api_url}/api/v1/simulations",
             method="POST",
             data={"preset_id": "kerr_circular_timelike", "parameters": {"mass": 1.0, "spin": 0.5, "radius": 6.0, "affine_span": 10.0}},
+            timeout=timeout,
         )
         data = json.loads(body.decode("utf-8")) if code == 200 else {}
         check(
@@ -154,6 +206,7 @@ def run_smoke_tests(api_url: str, frontend_url: Optional[str] = None, allowed_or
             f"{api_url}/api/v1/shadows",
             method="POST",
             data={"mass": 1.0, "spin": 0.9, "observer_inclination": 1.047197551},
+            timeout=timeout,
         )
         data = json.loads(body.decode("utf-8")) if code == 200 else {}
         check(
@@ -170,6 +223,7 @@ def run_smoke_tests(api_url: str, frontend_url: Optional[str] = None, allowed_or
             f"{api_url}/api/v1/simulations",
             method="POST",
             data={"preset_id": "schwarzschild_isco_circular", "parameters": {"affine_span": 9999.0}},
+            timeout=timeout,
         )
         data = json.loads(body.decode("utf-8")) if code == 422 else {}
         is_val_err = data.get("error_type") == "invalid_request_parameters"
@@ -193,6 +247,7 @@ def run_smoke_tests(api_url: str, frontend_url: Optional[str] = None, allowed_or
                     "Access-Control-Request-Method": "POST",
                     "Access-Control-Request-Headers": "content-type",
                 },
+                timeout=timeout,
             )
             allow_origin = headers.get("access-control-allow-origin")
             allow_methods = headers.get("access-control-allow-methods", "")
@@ -218,6 +273,7 @@ def run_smoke_tests(api_url: str, frontend_url: Optional[str] = None, allowed_or
                     "Access-Control-Request-Method": "POST",
                     "Access-Control-Request-Headers": "content-type",
                 },
+                timeout=timeout,
             )
             dis_allow_origin = headers_dis.get("access-control-allow-origin")
             check(
@@ -235,7 +291,7 @@ def run_smoke_tests(api_url: str, frontend_url: Optional[str] = None, allowed_or
     if frontend_url:
         for r in routes:
             try:
-                code, _, _ = _http_request(f"{frontend_url}{r}")
+                code, _, _ = _http_request(f"{frontend_url}{r}", timeout=timeout)
                 check(f"Frontend Route '{r}'", code == 200, f"HTTP {code}")
             except Exception as e:
                 check(f"Frontend Route '{r}'", False, str(e))
@@ -253,7 +309,17 @@ if __name__ == "__main__":
     parser.add_argument("--api-url", required=True, help="Base URL of deployed FastAPI backend")
     parser.add_argument("--frontend-url", default=None, help="Base URL of deployed Vercel frontend")
     parser.add_argument("--origin", default=None, help="Origin to test for CORS preflight (defaults to frontend-url)")
+    parser.add_argument("--timeout", type=float, default=25.0, help="Per-request HTTP timeout in seconds (default: 25.0, matching the 25s simulation timeout)")
+    parser.add_argument("--wait-for-health", action="store_true", default=False, help="Wait for backend /health endpoint to become ready before executing checks")
+    parser.add_argument("--max-wait", type=float, default=90.0, help="Maximum seconds to wait during --wait-for-health polling (default: 90.0)")
     args = parser.parse_args()
 
-    success = run_smoke_tests(args.api_url, args.frontend_url, args.origin)
+    success = run_smoke_tests(
+        api_url=args.api_url,
+        frontend_url=args.frontend_url,
+        allowed_origin=args.origin,
+        timeout=args.timeout,
+        wait_for_health=args.wait_for_health,
+        max_wait=args.max_wait,
+    )
     sys.exit(0 if success else 1)

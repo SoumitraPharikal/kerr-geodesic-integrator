@@ -195,14 +195,18 @@ The affine-span limits (`100.0` for unstable photon orbits and `500.0` for timel
 ### 4.2 Frontend Request Timeout & Error Classification Semantics
 * **Files:** `frontend/src/lib/api.ts`, `frontend/src/app/explorer/page.tsx`
 * **Mechanism:** `fetchWithTimeout` wrapper combining an internal `AbortController`, `setTimeout`, and caller-supplied `AbortSignal`.
-* **Timeout Values:**
-  - `DEFAULT_SIMULATION_TIMEOUT_MS = 25000` (25 seconds for numerical ODE integration)
-  - `DEFAULT_METADATA_TIMEOUT_MS = 10000` (10 seconds for `/health` and `/presets`)
+* **Timeout Values & Readiness Architecture:**
+  - `COLD_START_TIMEOUT_MS = 90000` (90 seconds maximum bounded timeout for Render Free container boot)
+  - `DEFAULT_SIMULATION_TIMEOUT_MS = 25000` (25 seconds bounded timeout for numerical ODE integration on an awake backend)
+  - `DEFAULT_METADATA_TIMEOUT_MS = 10000` (10 seconds bounded timeout for routine metadata requests on an awake backend)
+  - `FAST_PROBE_TIMEOUT_MS = 2500` (2.5 seconds bounded lightweight probe to `/health` when backend may have gone idle)
+  - `IDLE_FRESHNESS_WINDOW_MS = 60000` (60 seconds freshness window; active communication within 60s guarantees backend is awake and bypasses probe)
 * **Accurate Timeout Semantics & Operational Boundaries:**
-  1. *Frontend Responsiveness Limit, Not Backend Thread-Kill:* The 25-second timeout is strictly a **client-side failure-reporting and UI unblocking limit**. In standard HTTP and ASGI architectures, aborting a browser `fetch` closes the client connection, but does **not** terminate an already-executing synchronous Python worker thread. The worker thread will continue running until ODE termination or event cutoff.
-  2. *Direct Browser-to-Backend Topology:* In standard CORS deployment, the browser client calls the backend directly via HTTPS (`https://api.onrender.com`); it does **not** traverse Vercel's serverless gateway. The 25-second limit was chosen as an interactive usability threshold (allowing container cold starts plus max-span calculations) well before PaaS reverse-proxy timeouts (e.g. Render's 100-second timeout).
-  3. *Distinction of Timeout vs Cancellation:*
-     - Client timeout produces `errorType: "timeout_error"`, `statusCode: 408`, `isTimeout: true`, `isAborted: false`.
+  1. *Frontend Responsiveness Limit, Not Backend Thread-Kill:* The 25-second calculation timeout and 90-second cold-start timeout are strictly **client-side failure-reporting and UI unblocking limits**. In standard HTTP and ASGI architectures, aborting a browser `fetch` closes the client connection, but does **not** terminate an already-executing synchronous Python worker thread. The worker thread will continue running until ODE termination or event cutoff.
+  2. *Direct Browser-to-Backend Topology & Idle Recovery:* In standard CORS deployment, the browser client calls the backend directly via HTTPS (`https://api.onrender.com`); it does **not** traverse Vercel's serverless gateway. The 25-second simulation timeout ensures tight failure bounding for ODE calculations, while the 90-second cold-start gate accommodates Render Free container wake-up. If a tab remains open past the 15-minute idle spin-down, the readiness gate detects container sleep via lightweight probe and awaits container boot before submitting the calculation once with zero silent duplicate submissions.
+  3. *Distinction of Timeout vs Cancellation vs Wake-up:*
+     - Calculation timeout produces `errorType: "timeout_error"`, `statusCode: 408`, `isTimeout: true`, `isReadinessTimeout: false`, `isAborted: false`.
+     - Container cold-start timeout produces `errorType: "readiness_timeout"`, `statusCode: 408`, `isTimeout: true`, `isReadinessTimeout: true`, `isAborted: false`.
      - User cancellation (parameter adjustments / preset switches) produces `errorType: "abort_error"`, `statusCode: 499`, `isTimeout: false`, `isAborted: true`.
   4. *No Backend Concurrency Limit:* The backend currently has **no separate concurrency limit or thread-killing mechanism**. Concurrency protection relies entirely on the workload bounding (`affine_span` upper bounds) preventing long-running thread monopolization.
 
@@ -233,7 +237,7 @@ The affine-span limits (`100.0` for unstable photon orbits and `500.0` for timel
 ### 5.2 Render Web Service Configuration (Backend)
 - **Service Type:** Web Service (free tier — spins down after 15 minutes of inactivity)
 - **Plan:** Free ($0/mo; 512 MB RAM, 0.1 vCPU; 750 free instance hours/month per workspace)
-- **Cold-Start Behavior:** After 15 minutes of zero inbound traffic, Render shuts down the container. The next inbound request triggers a cold start of approximately 30–60 seconds while the container boots and loads the Python/SciPy stack. The frontend 25-second simulation timeout will expire during a cold start; the user will see a timeout/network error on first request. The second request (after warm-up) succeeds normally.
+- **Cold-Start Behavior:** After 15 minutes of zero inbound traffic, Render shuts down the container. The next inbound request triggers a cold start of approximately 30–60 seconds while the container boots and loads the Python/SciPy stack. The frontend readiness gate automatically detects the sleeping container via lightweight probe and awaits container boot (up to 90 seconds) before dispatching the simulation once with the 25-second ODE integration timeout. User cancellations immediately abort the wait.
 - **No Persistent Filesystem:** The free tier provides no persistent disk. The API is fully stateless and requires no disk storage.
 - **Runtime:** Python 3.13.5 (matches tested environment)
 - **Build Command:** `pip install --upgrade pip && pip install ".[api]"`
@@ -266,13 +270,17 @@ The affine-span limits (`100.0` for unstable photon orbits and `500.0` for timel
 A standalone, zero-dependency smoke test script is provided in `scripts/smoke_test_deployment.py`:
 
 ```bash
-# Run against live production deployment
+# Run against live production deployment (25s request timeout + 90s health readiness poll)
 python scripts/smoke_test_deployment.py \
   --api-url https://kerr-api.onrender.com \
-  --frontend-url https://kerr-geodesics.vercel.app
+  --frontend-url https://kerr-geodesics.vercel.app \
+  --wait-for-health
 ```
 
 The smoke-test suite automates up to **16 HTTP checks** (8 backend + CORS checks when `--frontend-url` is omitted, with checks 9–16 marked `[SKIP]`; all 16 checks when `--frontend-url` is provided):
+- **Per-Request Timeout:** Uses `--timeout 25.0` (default: 25 seconds, matching the 25s simulation timeout for active ODE integration).
+- **Cold-Start Readiness Polling:** When `--wait-for-health` is passed, polls `GET /health` with bounded retry (up to `--max-wait 90.0`) until the container is ready, before executing the test assertions.
+- **No Silent Retries:** Simulation and shadow calculation requests are never silently retried.
 1. `GET /health` returns HTTP 200, `status="ok"`, and matches engine release commit `062b20c80a689640637a2fcd003bdd921a7d4132`.
 2. `GET /api/v1/presets` returns all 7 presets.
 3. `POST /api/v1/simulations` with Schwarzschild ISCO parameters succeeds.
@@ -297,7 +305,7 @@ After the automated smoke-test script passes, perform manual browser checks on t
 2. **Stateless Execution:**  
    The API has zero database or disk persistence. Every simulation request is integrated fresh in memory. Decimated trajectories are returned directly to the client without server-side caching.
 3. **Cold Starts on Render Free Tier:**
-   On Render Free tier, containers spin down after 15 minutes of inactivity, causing a 30–60 second cold start. The frontend 25-second timeout will expire on first contact after a sleep period; the user receives a timeout error. The backend warms up in the background and the second request succeeds normally. This is an expected and documented limitation of the $0 free-tier deployment. Users should be advised of potential first-request latency.
+   On Render Free tier, containers spin down after 15 minutes of inactivity, causing a 30–60 second cold start on the subsequent request. The frontend request timeout is calibrated to 90 seconds (`DEFAULT_SIMULATION_TIMEOUT_MS = 90000`, `COLD_START_TIMEOUT_MS = 90000`), allowing the first request to await container initialization without failing prematurely. UI loading overlays notify the user that waking from idle may take approximately 30–60 seconds. Once awake, subsequent requests respond within normal sub-second latencies.
 
 ---
 

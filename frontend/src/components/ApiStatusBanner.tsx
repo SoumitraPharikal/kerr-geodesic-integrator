@@ -77,9 +77,12 @@ export function ApiStatusBanner({ onPresetsLoaded, compact = false, className = 
   if (compact) {
     if (loading) {
       return (
-        <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[var(--muted)]">
+        <span
+          className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[var(--muted)]"
+          title="Connecting to scientific backend. Free tier may take ~30–60s to wake from idle."
+        >
           <RefreshCw className="h-3 w-3 animate-spin text-[var(--muted-light)]" />
-          <span>Connecting API...</span>
+          <span>Waking / Connecting API...</span>
         </span>
       );
     }
@@ -136,7 +139,7 @@ export function ApiStatusBanner({ onPresetsLoaded, compact = false, className = 
             <div className="flex items-center gap-2">
               <span className="font-semibold text-xs tracking-tight text-[var(--foreground)]">
                 {loading
-                  ? "Verifying Engine API Connectivity..."
+                  ? "Verifying Engine API Connectivity (Free tier wakes in ~30–60s)..."
                   : error
                   ? "Scientific Backend Offline"
                   : "Scientific Engine Connected & Validated"}
@@ -149,7 +152,7 @@ export function ApiStatusBanner({ onPresetsLoaded, compact = false, className = 
             </div>
             <p className="text-[11px] leading-relaxed text-[var(--muted)]">
               {loading
-                ? "Connecting to local FastAPI runtime at http://127.0.0.1:8000..."
+                ? "Checking backend health. On Render Free tier, waking a sleeping container takes approximately 30–60 seconds."
                 : error
                 ? error
                 : `Active runtime: ${health?.engine} v${health?.version} (commit ${health?.commit_hash.slice(0, 7)})`}
