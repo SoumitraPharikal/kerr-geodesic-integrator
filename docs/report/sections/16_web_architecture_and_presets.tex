@@ -1,0 +1,55 @@
+\section{Web Architecture, API Service, and Recorded Presets}
+\label{sec:web_architecture_and_presets}
+
+\subsection{Three-Tier System Architecture}
+Beyond the core Python library (\texttt{src/geodesics}), release \texttt{v1.0.0} (commit \texttt{062b20c8}, MIT License) packages the framework into a stateless three-tier web laboratory:
+\begin{center}
+\small
+\texttt{src/geodesics} (Python Engine) $\longrightarrow$ \texttt{geodesics.api} (FastAPI) $\longrightarrow$ \textsc{Kerr Geodesics Lab} (Next.js)
+\end{center}
+All relativistic physics, Hamiltonian ODE integration, root refinement, and analytical shadow construction execute exclusively in the Python engine. The browser renders trajectories, conserved-quantity readouts, and analytical reference radii without independently integrating geodesics.
+
+The FastAPI service (\texttt{src/geodesics/api/app.py}) exposes four endpoints with strict Pydantic validation (\texttt{extra="forbid"}):
+\begin{itemize}
+    \item \texttt{GET /health}: Returns service status, version \texttt{1.0.0}, and commit \texttt{062b20c8}.
+    \item \texttt{GET /api/v1/presets}: Returns metadata for the seven curated equatorial simulation presets.
+    \item \texttt{POST /api/v1/simulations}: Runs a stateless geodesic integration for a selected preset and parameter overrides, enforcing sub-extremal spin bounds ($|a| < M$, and $0 \le a \le M$ for the retrograde photon preset) and affine span caps ($\Delta\lambda \le 500$ for timelike/scattering runs and $\Delta\lambda \le 100$ for unstable photon orbits).
+    \item \texttt{POST /api/v1/shadows}: Exposes the analytical Bardeen shadow boundary solver (\texttt{mass > 0}, $|a| \le M$, $\theta_o \in [0, \pi]$, $N \in [3, 2000]$), returning $(\alpha, \beta)$ vertices and geometric observables (\texttt{area}, \texttt{centroid}, \texttt{width}, \texttt{height}).
+\end{itemize}
+
+\subsection{Frontend Routes and Feature Status}
+The Next.js frontend (\texttt{frontend/}) follows an editorial field-notebook design and separates live computation, static reference data, and planned extensions:
+\begin{itemize}
+    \item \textbf{Home (\texttt{/}) and Explorer (\texttt{/explorer}):} Home introduces the lab using the recorded \texttt{kerr\_equatorial\_scattering} benchmark, while Explorer serves as the live integration workbench calling \texttt{POST /api/v1/simulations} with \texttt{/health} readiness gating, CSV/JSON export, and analytical reference surfaces.
+    \item \textbf{Gallery (\texttt{/gallery}):} Displays a static archive of seven pre-computed equatorial geodesic snapshots recorded at commit \texttt{062b20c8}. Gallery does not call the live API and does not contain computed shadow boundaries.
+    \item \textbf{Shadow Lab (\texttt{/shadows}) --- Planned UI:} Although \texttt{POST /api/v1/shadows} is operational in the backend, the \texttt{/shadows} frontend route remains a clearly labeled planned-feature and concept-preview page. It makes no shadow API calls and performs no client-side ray tracing.
+    \item \textbf{Reference Routes (\texttt{/mathematics}, \texttt{/validation}, \texttt{/docs}, \texttt{/about}):} Document the Hamiltonian and Carter conventions, the seven-preset drift audit ledger, the API schema with verified HTTP examples, and project provenance.
+\end{itemize}
+In production, the FastAPI backend is deployed on Render (Oregon region, manual deployment from \texttt{master}, Python \texttt{3.13.5}) and the Next.js frontend is deployed on Vercel at:
+\begin{center}
+\url{https://kerr-geodesic-integrator.vercel.app}
+\end{center}
+
+\subsection{Recorded Seven-Preset Hamiltonian Drift Audit}
+Table~\ref{tab:preset_drift_ledger} summarizes the run-specific maximum Hamiltonian constraint drift recorded across the seven equatorial presets ($\mathcal{Q} = 0$) stored in \texttt{frontend/src/data/gallery\_trajectories.json} at commit \texttt{062b20c8} using \textsc{DOP853}. These values represent run-specific numerical diagnostics for those exact configurations rather than universal error bounds.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{Recorded maximum Hamiltonian constraint drift across the seven saved equatorial presets ($\mathcal{Q} = 0$, solver \textsc{DOP853}, commit \texttt{062b20c8}).}
+\label{tab:preset_drift_ledger}
+\begin{tabular}{@{}llcl@{}}
+\toprule
+\textbf{Preset ID} & \textbf{Termination} & \textbf{Max Drift} $|\Delta\mathcal{H}|_{\max}$ & \textbf{Regime} \\
+\midrule
+\texttt{schwarzschild\_isco\_circular} & Interval end & $0.0$ & Timelike circular ($a=0$) \\
+\texttt{schwarzschild\_precession} & Interval end & $2.220 \times 10^{-16}$ & Timelike bound ($a=0$) \\
+\texttt{schwarzschild\_photon\_sphere} & Interval end & $4.441 \times 10^{-16}$ & Null circular ($a=0$) \\
+\texttt{kerr\_equatorial\_prograde\_photon} & Interval end & $1.066 \times 10^{-14}$ & Null prograde ($a > 0$) \\
+\texttt{kerr\_equatorial\_retrograde\_photon} & Interval end & $6.661 \times 10^{-16}$ & Null retrograde ($a > 0$) \\
+\texttt{kerr\_circular\_timelike} & Interval end & $3.331 \times 10^{-16}$ & Timelike circular ($a > 0$) \\
+\texttt{kerr\_equatorial\_scattering} & Event cutoff & $3.880 \times 10^{-13}$ & Null scattering ($a > 0$) \\
+\bottomrule
+\end{tabular}
+\end{table}

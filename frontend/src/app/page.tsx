@@ -2,169 +2,295 @@
 
 import React from "react";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import ScientificPlot from "@/components/ScientificPlot";
+import ReadoutList from "@/components/ReadoutList";
+import MarginNote from "@/components/MarginNote";
 import galleryData from "@/data/gallery_trajectories.json";
-import { Compass, Layers, ShieldCheck, ArrowRight, ExternalLink } from "lucide-react";
+import { formatDrift, formatFloat } from "@/lib/format";
 import { SimulationResponse } from "@/lib/api";
 
-function GithubIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fillRule="evenodd"
-        d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
-}
+const RECORDED_PRESET_DRIFTS = [
+  {
+    id: "schwarzschild_isco_circular",
+    name: "Schwarzschild ISCO circular orbit",
+    spacetime: "Schwarzschild",
+    drift: "< 1e-16",
+    tone: "default" as const,
+  },
+  {
+    id: "schwarzschild_precession",
+    name: "Schwarzschild precession",
+    spacetime: "Schwarzschild",
+    drift: "2.22e-16",
+    tone: "default" as const,
+  },
+  {
+    id: "schwarzschild_photon_sphere",
+    name: "Schwarzschild photon sphere",
+    spacetime: "Schwarzschild",
+    drift: "4.44e-16",
+    tone: "default" as const,
+  },
+  {
+    id: "kerr_equatorial_prograde_photon",
+    name: "Kerr prograde photon orbit",
+    spacetime: "Kerr (a = 0.9 M)",
+    drift: "1.07e-14",
+    tone: "prograde" as const,
+  },
+  {
+    id: "kerr_equatorial_retrograde_photon",
+    name: "Kerr retrograde photon orbit",
+    spacetime: "Kerr (a = 0.9 M)",
+    drift: "6.66e-16",
+    tone: "retrograde" as const,
+  },
+  {
+    id: "kerr_circular_timelike",
+    name: "Kerr circular timelike orbit",
+    spacetime: "Kerr (a = 0.9 M)",
+    drift: "3.33e-16",
+    tone: "prograde" as const,
+  },
+  {
+    id: "kerr_equatorial_scattering",
+    name: "Kerr equatorial scattering",
+    spacetime: "Kerr (a = 0.5 M)",
+    drift: "3.88e-13",
+    tone: "prograde" as const,
+  },
+];
 
 export default function HomePage() {
-  const heroPreset = galleryData["schwarzschild_precession"];
+  const heroPreset = galleryData["kerr_equatorial_scattering"];
   const heroSimulation = heroPreset.simulation as unknown as SimulationResponse;
 
+  const rValues = heroSimulation.trajectory.coordinates.r;
+  const rMin = Math.min(...rValues);
+  const rMax = Math.max(...rValues);
+
   return (
-    <div className="flex flex-col flex-1 pb-20">
-      {/* Editorial Header Section */}
-      <section className="border-b border-[var(--border)] bg-[var(--surface)] py-12 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-5xl text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-[3px] border border-[var(--border)] bg-[var(--surface-subtle)] text-xs font-mono text-[var(--muted)]">
-            <span>Release v1.0.0</span>
-            <span className="text-[var(--border)]">·</span>
-            <span>Immutable Engine Baseline</span>
+    <div className="flex flex-col flex-1 pb-24">
+      {/* Asymmetric Instrument + Notebook Hero */}
+      <section className="border-b border-[var(--border)] bg-[var(--surface)] py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+          <div className="lg:col-span-5 space-y-6">
+            <h1 className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[var(--foreground)] tracking-tight leading-[1.14]">
+              A spinning black hole drags space around with it. This lab follows what happens next.
+            </h1>
+
+            <p className="prose-notebook text-[var(--foreground-secondary)]">
+              I built Kerr Geodesics Lab to test how spacetime curvature and frame-dragging shape the
+              motion of particles and light. You can inspect seven recorded Schwarzschild and Kerr
+              presets, vary physical parameters against the Python integrator, and check conserved
+              quantities along each orbit.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1 font-sans">
+              <Link
+                href="/explorer"
+                className="inline-flex items-center gap-2 rounded-[2px] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-4 py-2 text-sm font-medium"
+              >
+                <span>Open Explorer</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+
+              <Link
+                href="/validation"
+                className="inline-flex items-center gap-2 rounded-[2px] border border-[var(--border)] bg-[var(--background)] hover:bg-[var(--surface-hover)] text-[var(--foreground)] px-4 py-2 text-sm font-medium"
+              >
+                <span>Read the validation</span>
+              </Link>
+            </div>
+
+            <nav aria-label="Quick links" className="pt-4 border-t border-[var(--border-subtle)] flex flex-wrap gap-x-6 gap-y-2 text-sm font-sans">
+              <Link href="/gallery" className="text-[var(--foreground-secondary)] hover:text-[var(--foreground)] underline underline-offset-4">
+                Orbit gallery
+              </Link>
+              <Link href="/mathematics" className="text-[var(--foreground-secondary)] hover:text-[var(--foreground)] underline underline-offset-4">
+                Mathematical formulation
+              </Link>
+              <Link href="/docs" className="text-[var(--foreground-secondary)] hover:text-[var(--foreground)] underline underline-offset-4">
+                API reference
+              </Link>
+              <Link href="/about" className="text-[var(--foreground-secondary)] hover:text-[var(--foreground)] underline underline-offset-4">
+                About the project
+              </Link>
+            </nav>
           </div>
 
-          <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-normal text-[var(--foreground)] tracking-tight leading-[1.15]">
-            Kerr Geodesics Lab
-          </h1>
+          {/* Dominant Trajectory Figure */}
+          <div className="lg:col-span-7 space-y-3">
+            <div className="border border-[var(--border)] bg-[var(--background)] rounded-[2px] overflow-hidden">
+              <ScientificPlot
+                simulationData={heroSimulation}
+                presetId="kerr_equatorial_scattering"
+                spacetime="Kerr"
+                geodesicType="null"
+                mass={1.0}
+                spin={0.5}
+                initialRadius={50.0}
+                projection="equatorial"
+                title="Kerr equatorial photon scattering"
+                className="border-0 rounded-none"
+              />
+            </div>
 
-          <p className="max-w-2xl mx-auto text-sm sm:text-base text-[var(--foreground-secondary)] font-sans leading-relaxed">
-            Numerical integration of timelike and null geodesics in Kerr and Schwarzschild spacetimes via canonical Hamiltonian equations.
-            Developed for machine-precision research and education in relativistic astrophysics and curved spacetime geometry.
-          </p>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-1">
+              <p className="md:col-span-7 text-xs sm:text-[13px] text-[var(--foreground-secondary)] font-sans leading-relaxed">
+                <strong className="font-medium text-[var(--foreground)]">Recorded output (commit 062b20c):</strong>{" "}
+                An equatorial null ray enters from <span className="tabular-nums">r₀ = 50.0 M</span> with
+                impact parameter <span className="tabular-nums">b = L_z / E = 4.5 M</span> around a Kerr
+                black hole (<span className="tabular-nums">a = 0.5 M</span>), bends around closest
+                approach <span className="tabular-nums">r_min = {formatFloat(rMin, 3)} M</span> near the
+                prograde photon orbit, and escapes back to <span className="tabular-nums">{formatFloat(rMax, 1)} M</span>.
+              </p>
 
-          {/* Three Primary Entry Points */}
-          <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/explorer"
-              className="inline-flex items-center gap-2 rounded-[3px] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-4 py-2 text-xs font-sans font-medium transition-colors cursor-pointer shadow-xs"
-            >
-              <Compass className="h-4 w-4" />
-              <span>Launch Geodesic Explorer</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-
-            <Link
-              href="/gallery"
-              className="inline-flex items-center gap-2 rounded-[3px] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-[var(--foreground)] px-4 py-2 text-xs font-sans font-medium transition-colors cursor-pointer"
-            >
-              <Layers className="h-4 w-4 text-[var(--muted)]" />
-              <span>Orbit Gallery (7 Presets)</span>
-            </Link>
-
-            <Link
-              href="/validation"
-              className="inline-flex items-center gap-2 rounded-[3px] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-[var(--foreground)] px-4 py-2 text-xs font-sans font-medium transition-colors cursor-pointer"
-            >
-              <ShieldCheck className="h-4 w-4 text-[var(--muted)]" />
-              <span>Validation Record</span>
-            </Link>
+              <div className="md:col-span-5">
+                <ReadoutList
+                  items={[
+                    {
+                      label: "Conserved energy",
+                      value: formatFloat(heroSimulation.conserved_quantities.energy, 6),
+                    },
+                    {
+                      label: "Axial angular momentum",
+                      value: formatFloat(heroSimulation.conserved_quantities.angular_momentum, 6),
+                      unit: "M",
+                      tone: "prograde",
+                    },
+                    {
+                      label: "Hamiltonian drift",
+                      value: formatDrift(heroSimulation.conserved_quantities.hamiltonian_drift_max),
+                    },
+                    {
+                      label: "Integrator, samples",
+                      value: `${heroSimulation.solver_diagnostics.method}, ${heroSimulation.trajectory.lambdas.length}`,
+                    },
+                  ]}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Main Content Area */}
-      <div className="mx-auto max-w-5xl w-full px-4 sm:px-6 lg:px-8 mt-10 space-y-12">
-
-        {/* Prominent Real Orbit Figure */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-mono uppercase tracking-wider text-[var(--muted)]">
-              Representative Numerical Trajectory
-            </div>
-            <Link
-              href="/explorer"
-              className="text-xs font-sans text-[var(--accent)] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <span>Open in Explorer</span>
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-
-          <div className="rounded-[4px] border border-[var(--border)] bg-[var(--surface)] overflow-hidden shadow-xs">
-            <ScientificPlot
-              simulationData={heroSimulation}
-              presetId="schwarzschild_precession"
-              spacetime="Schwarzschild"
-              geodesicType="timelike"
-              mass={1.0}
-              spin={0.0}
-              initialRadius={8.0}
-              projection="equatorial"
-              title="Schwarzschild Relativistic Periastron Precession"
-              className="border-0 rounded-none"
-            />
-          </div>
-
-          <p className="text-xs text-[var(--foreground-secondary)] font-sans leading-relaxed">
-            <strong className="text-[var(--foreground)] font-medium">Figure 1:</strong> Relativistic periastron precession of a bound timelike geodesic outside the innermost stable circular orbit in Schwarzschild spacetime (<span className="font-mono">M = 1.0</span>, initial coordinate radius <span className="font-mono">r₀ = 8.0 M</span>, radial perturbation <span className="font-mono">δp_r = 0.001</span>, affine parameter span <span className="font-mono">λ = 100.0</span>). The trajectory is integrated directly by the Python engine using the 8th-order Dormand-Prince stepper (DOP853) with adaptive local error control (<span className="font-mono">rtol = atol = 10⁻¹⁰</span>), achieving maximum Hamiltonian constraint drift <span className="font-mono">|ΔH| ≤ 2.22 × 10⁻¹⁶</span>.
-          </p>
-        </section>
-
-        {/* Restrained Validation Strip */}
-        <section className="border-t border-[var(--border)] pt-8 space-y-4">
-          <div className="text-xs font-mono uppercase tracking-wider text-[var(--foreground-secondary)]">
-            Empirical Benchmark Summary
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="rounded-[3px] border border-[var(--border)] bg-[var(--surface)] p-3 space-y-1">
-              <div className="font-mono text-base font-semibold text-[var(--foreground)]">4,440 Passing</div>
-              <div className="text-[11px] font-sans text-[var(--foreground-secondary)]">Recorded test suite baseline (4,412 core + 28 API &amp; gallery)</div>
-            </div>
-
-            <div className="rounded-[3px] border border-[var(--border)] bg-[var(--surface)] p-3 space-y-1">
-              <div className="font-mono text-base font-semibold text-[var(--foreground)]">|ΔH| ≤ 10⁻¹⁵</div>
-              <div className="text-[11px] font-sans text-[var(--foreground-secondary)]">Pointwise Hamiltonian constraint residual</div>
-            </div>
-
-            <div className="rounded-[3px] border border-[var(--border)] bg-[var(--surface)] p-3 space-y-1">
-              <div className="font-mono text-base font-semibold text-[var(--foreground)]">7 Presets</div>
-              <div className="text-[11px] font-sans text-[var(--foreground-secondary)]">Verified Schwarzschild and Kerr configurations</div>
-            </div>
-
-            <div className="rounded-[3px] border border-[var(--border)] bg-[var(--surface)] p-3 space-y-1">
-              <div className="font-mono text-base font-semibold text-[var(--foreground)]">DOP853</div>
-              <div className="text-[11px] font-sans text-[var(--foreground-secondary)]">Explicit 8th-order embedded Runge-Kutta integrator</div>
-            </div>
-          </div>
-        </section>
-
-        {/* Technical Documentation & Repository Link */}
-        <section className="border-t border-[var(--border)] pt-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h3 className="font-serif text-sm font-normal text-[var(--foreground)]">
-              Open Research & Technical Report
-            </h3>
-            <p className="text-xs font-sans text-[var(--muted)]">
-              Full architectural specifications, mathematical derivations, and verification records are available in the repository.
+      {/* Main Editorial Sections */}
+      <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 mt-14 space-y-16">
+        {/* Seven Orbits, Checked */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 border-t border-[var(--border)] pt-10">
+          <div className="lg:col-span-4 space-y-3">
+            <h2 className="font-serif text-2xl font-normal text-[var(--foreground)] tracking-tight">
+              Seven orbits, checked
+            </h2>
+            <p className="text-sm font-sans text-[var(--foreground-secondary)] leading-relaxed">
+              Maximum observed Hamiltonian drift: approximately{" "}
+              <span className="tabular-nums font-medium text-[var(--foreground)]">4 × 10⁻¹³</span>{" "}
+              across the seven recorded preset runs.
             </p>
+            <MarginNote label="Recorded result">
+              This bound summarizes the seven default preset snapshots recorded at commit{" "}
+              <span className="font-mono text-[var(--foreground)]">062b20c</span>. It is not a
+              universal guarantee for arbitrary initial conditions or integration spans.
+            </MarginNote>
           </div>
 
-          <div className="flex items-center gap-3">
-            <a
-              href="https://github.com/SoumitraPharikal/kerr-geodesic-integrator"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-[3px] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] px-3 py-1.5 text-xs font-sans text-[var(--foreground)] transition-colors cursor-pointer"
-            >
-              <GithubIcon className="h-3.5 w-3.5 text-[var(--muted)]" />
-              <span>GitHub Repository</span>
-              <ExternalLink className="h-3 w-3 text-[var(--muted)]" />
-            </a>
+          <div className="lg:col-span-8">
+            <div className="overflow-x-auto border-y border-[var(--border)]">
+              <table className="w-full text-left text-sm font-sans">
+                <thead>
+                  <tr className="border-b border-[var(--border)] text-xs font-medium text-[var(--muted)]">
+                    <th className="py-2.5 pr-4">Preset</th>
+                    <th className="py-2.5 px-4">Spacetime</th>
+                    <th className="py-2.5 px-4 text-right">Recorded |ΔH|</th>
+                    <th className="py-2.5 pl-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)] tabular-nums">
+                  {RECORDED_PRESET_DRIFTS.map((row) => (
+                    <tr key={row.id}>
+                      <td className="py-2.5 pr-4 font-medium text-[var(--foreground)]">
+                        {row.name}
+                      </td>
+                      <td
+                        className={`py-2.5 px-4 ${
+                          row.tone === "prograde"
+                            ? "text-[var(--prograde)]"
+                            : row.tone === "retrograde"
+                            ? "text-[var(--retrograde)]"
+                            : "text-[var(--foreground-secondary)]"
+                        }`}
+                      >
+                        {row.spacetime}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono text-xs text-[var(--foreground)]">
+                        {row.drift}
+                      </td>
+                      <td className="py-2.5 pl-4 text-right">
+                        <Link
+                          href={`/explorer?preset=${row.id}`}
+                          className="text-xs text-[var(--accent)] hover:underline underline-offset-2"
+                        >
+                          Open Explorer
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
+        {/* How It Is Built & Methods / Limitations */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 border-t border-[var(--border)] pt-10">
+          <div className="lg:col-span-4 space-y-2">
+            <h2 className="font-serif text-2xl font-normal text-[var(--foreground)] tracking-tight">
+              How it is built, and what it does not do
+            </h2>
+          </div>
+
+          <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8 text-sm font-sans text-[var(--foreground-secondary)] leading-relaxed">
+            <div className="space-y-3">
+              <h3 className="font-serif text-lg text-[var(--foreground)]">
+                Python engine, FastAPI, interface
+              </h3>
+              <p>
+                The Python engine computes the trajectories and physical quantities. The interface
+                presents those results.
+              </p>
+              <p>
+                Geodesics are integrated in 8D Boyer–Lindquist phase space using SciPy&apos;s{" "}
+                <span className="font-mono text-[var(--foreground)]">solve_ivp</span> with the
+                adaptive 8th-order <span className="font-mono text-[var(--foreground)]">DOP853</span>{" "}
+                method by default. Because <span className="font-mono text-[var(--foreground)]">DOP853</span>{" "}
+                is non-symplectic, drift is kept small by adaptive error control rather than forbidden
+                by construction.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="font-serif text-lg text-[var(--foreground)]">
+                Scope and limitations
+              </h3>
+              <ul className="space-y-2 list-disc pl-4">
+                <li>
+                  The seven interactive presets cover equatorial Schwarzschild and sub-extremal Kerr
+                  orbits; off-equatorial trajectories are not exposed in the lab UI.
+                </li>
+                <li>
+                  No general relativistic ray tracing, accretion-flow modeling, or external peer
+                  review is claimed.
+                </li>
+                <li>
+                  The <Link href="/shadows" className="underline underline-offset-2 hover:text-[var(--foreground)]">Shadow Lab</Link>{" "}
+                  frontend remains a planned extension; its interface is not yet active.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );

@@ -5,61 +5,105 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
-import { fetchHealth } from "@/lib/api";
+import { ensureBackendReady, isBackendAwake } from "@/lib/api";
 
 interface NavItem {
   name: string;
   href: string;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const INSTRUMENT_ITEMS: NavItem[] = [
   { name: "Explorer", href: "/explorer" },
-  { name: "Orbit Gallery", href: "/gallery" },
+  { name: "Gallery", href: "/gallery" },
   { name: "Shadow Lab", href: "/shadows" },
+];
+
+const REFERENCE_ITEMS: NavItem[] = [
   { name: "Mathematics", href: "/mathematics" },
   { name: "Validation", href: "/validation" },
   { name: "Docs", href: "/docs" },
   { name: "About", href: "/about" },
 ];
 
+type EngineStatus = "online" | "waking" | "unreachable";
+
 export function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
+  const [engineStatus, setEngineStatus] = useState<EngineStatus>(() =>
+    isBackendAwake() ? "online" : "waking"
+  );
+
+  // Engine status is shown only on routes that actively invoke the Python engine
+  const isEngineRoute = pathname.startsWith("/explorer");
 
   useEffect(() => {
+    if (!isEngineRoute) return;
+
+    const controller = new AbortController();
     let active = true;
-    fetchHealth()
+
+    if (isBackendAwake()) {
+      queueMicrotask(() => {
+        if (active) setEngineStatus("online");
+      });
+    } else {
+      queueMicrotask(() => {
+        if (active) setEngineStatus("waking");
+      });
+    }
+
+    ensureBackendReady({ signal: controller.signal })
       .then(() => {
-        if (active) setApiOnline(true);
+        if (active) setEngineStatus("online");
       })
       .catch(() => {
-        if (active) setApiOnline(false);
+        if (active && !controller.signal.aborted) {
+          setEngineStatus("unreachable");
+        }
       });
+
     return () => {
       active = false;
+      controller.abort();
     };
-  }, []);
+  }, [isEngineRoute, pathname]);
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   };
 
+  const statusText =
+    engineStatus === "online"
+      ? "Engine online, v1.0.0"
+      : engineStatus === "waking"
+      ? "Waking the engine, this can take a moment"
+      : "Engine unreachable";
+
+  const statusDotClass =
+    engineStatus === "online"
+      ? "bg-[var(--status-ok)]"
+      : engineStatus === "waking"
+      ? "bg-[var(--status-warn)]"
+      : "bg-[var(--status-error)]";
+
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] transition-colors">
+    <nav
+      aria-label="Primary"
+      className="sticky top-0 z-40 w-full border-b border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)]"
+    >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 h-14">
-        {/* Brand / Logo */}
-        <div className="flex items-center gap-6">
+        {/* Brand + Grouped Navigation */}
+        <div className="flex items-center gap-7">
           <Link
             href="/"
-            className="flex items-center gap-2.5 text-[var(--foreground)] hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2.5 text-[var(--foreground)] hover:opacity-80"
           >
-            {/* Ink-colored precessing orbit glyph */}
             <svg
-              width="22"
-              height="22"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -76,88 +120,94 @@ export function Navbar() {
                 ry="3.75"
                 transform="rotate(35 12 12)"
                 strokeDasharray="2 2"
-                opacity="0.5"
+                opacity="0.55"
               />
             </svg>
-            <span className="font-serif text-[17px] tracking-tight font-normal text-[var(--foreground)]">
+            <span className="font-serif text-[17px] tracking-tight font-normal text-[var(--foreground)] whitespace-nowrap">
               Kerr Geodesics Lab
             </span>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <div className="hidden lg:flex items-center space-x-1">
-            {NAV_ITEMS.map((item) => {
-              const active = isActive(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`px-2.5 py-1 text-[13px] font-sans transition-colors rounded-[3px] ${
-                    active
-                      ? "text-[var(--foreground)] font-medium bg-[var(--surface-subtle)]"
-                      : "text-[var(--foreground-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]"
-                  }`}
-                >
-                  {item.name}
-                </Link>
-              );
-            })}
+          {/* Desktop Navigation: Instruments | Reference */}
+          <div className="hidden lg:flex items-center gap-5">
+            <div className="flex items-center gap-4" aria-label="Instruments">
+              {INSTRUMENT_ITEMS.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`py-1 text-[13px] font-sans border-b-2 ${
+                      active
+                        ? "border-[var(--foreground)] text-[var(--foreground)] font-medium"
+                        : "border-transparent text-[var(--foreground-secondary)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+
+            <div className="h-3.5 w-px bg-[var(--border)]" aria-hidden="true" />
+
+            <div className="flex items-center gap-4" aria-label="Reference">
+              {REFERENCE_ITEMS.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`py-1 text-[13px] font-sans border-b-2 ${
+                      active
+                        ? "border-[var(--foreground)] text-[var(--foreground)] font-medium"
+                        : "border-transparent text-[var(--foreground-secondary)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Right Shell Controls: API status dot + Theme Toggle */}
-        <div className="hidden md:flex items-center gap-4">
-          {/* Subtle Global API status indicator */}
-          <div
-            className="flex items-center gap-1.5 text-xs text-[var(--foreground-secondary)] font-sans"
-            title={
-              apiOnline === true
-                ? "Computation Engine: Online (v1.0.0)"
-                : apiOnline === false
-                ? "Computation Engine: Offline"
-                : "Checking engine connection..."
-            }
-          >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                apiOnline === true
-                  ? "bg-emerald-600 dark:bg-emerald-400"
-                  : apiOnline === false
-                  ? "bg-red-600 dark:bg-red-400"
-                  : "bg-amber-600 dark:bg-amber-400"
-              }`}
-              aria-hidden="true"
-            />
-            <span className="text-[12px] font-mono text-[var(--foreground-secondary)]">
-              {apiOnline === true ? "Engine v1.0.0" : apiOnline === false ? "Engine Offline" : "Connecting"}
-            </span>
-          </div>
+        {/* Desktop Right Controls (>=1024px): Engine status (only where active) + Theme Toggle */}
+        <div className="hidden lg:flex items-center gap-3">
+          {isEngineRoute && (
+            <>
+              <div
+                className="flex items-center gap-2 text-xs font-sans text-[var(--foreground-secondary)]"
+                role="status"
+                aria-live="polite"
+              >
+                <span className={`h-2 w-2 rounded-full shrink-0 ${statusDotClass}`} aria-hidden="true" />
+                <span className="whitespace-nowrap">{statusText}</span>
+              </div>
+              <div className="h-3.5 w-px bg-[var(--border)]" aria-hidden="true" />
+            </>
+          )}
 
-          <div className="h-3.5 w-px bg-[var(--border)]" aria-hidden="true" />
-
-          {/* Theme Toggle Button */}
           <button
             type="button"
             onClick={toggleTheme}
-            className="flex h-7 w-7 items-center justify-center rounded-[3px] text-[var(--foreground-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors focus:outline-none cursor-pointer"
+            className="flex h-7 w-7 items-center justify-center rounded-[2px] text-[var(--foreground-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] cursor-pointer"
             aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
             title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
           >
-            {theme === "dark" ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
         </div>
 
-        {/* Mobile menu trigger */}
+        {/* Mobile / Tablet Controls (<1024px): Single Theme Toggle + Menu Trigger */}
         <div className="flex lg:hidden items-center gap-2">
           <button
             type="button"
             onClick={toggleTheme}
-            className="p-1 text-[var(--muted)] hover:text-[var(--foreground)]"
-            aria-label="Toggle theme"
+            className="flex h-7 w-7 items-center justify-center rounded-[2px] text-[var(--foreground-secondary)] hover:text-[var(--foreground)] cursor-pointer"
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
@@ -165,7 +215,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-1 text-[var(--muted)] hover:text-[var(--foreground)] focus:outline-none"
+            className="flex h-7 w-7 items-center justify-center rounded-[2px] text-[var(--foreground-secondary)] hover:text-[var(--foreground)] cursor-pointer"
             aria-expanded={mobileMenuOpen}
             aria-label="Toggle navigation menu"
           >
@@ -174,30 +224,63 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown */}
+      {/* Mobile / Tablet Dropdown Menu (<1024px) */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-[var(--border)] bg-[var(--surface)] px-4 py-3 space-y-1">
-          {NAV_ITEMS.map((item) => {
-            const active = isActive(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block rounded-[3px] px-3 py-1.5 text-sm font-sans ${
-                  active
-                    ? "font-medium text-[var(--foreground)] bg-[var(--surface-subtle)]"
-                    : "text-[var(--muted)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                {item.name}
-              </Link>
-            );
-          })}
-          <div className="pt-2 border-t border-[var(--border-subtle)] mt-2 flex items-center justify-between text-xs font-mono text-[var(--muted)] px-3">
-            <span>Status:</span>
-            <span>{apiOnline ? "Engine v1.0.0 Online" : "Engine Offline"}</span>
+        <div className="lg:hidden border-t border-[var(--border)] bg-[var(--surface)] px-4 py-4 space-y-4">
+          <div className="space-y-1">
+            <div className="px-2 text-[11px] font-sans font-medium uppercase tracking-wider text-[var(--muted)]">
+              Instruments
+            </div>
+            {INSTRUMENT_ITEMS.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-current={active ? "page" : undefined}
+                  className={`block px-2 py-1.5 text-sm font-sans ${
+                    active
+                      ? "font-medium text-[var(--foreground)] underline underline-offset-4"
+                      : "text-[var(--foreground-secondary)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
           </div>
+
+          <div className="space-y-1 border-t border-[var(--border-subtle)] pt-3">
+            <div className="px-2 text-[11px] font-sans font-medium uppercase tracking-wider text-[var(--muted)]">
+              Reference
+            </div>
+            {REFERENCE_ITEMS.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-current={active ? "page" : undefined}
+                  className={`block px-2 py-1.5 text-sm font-sans ${
+                    active
+                      ? "font-medium text-[var(--foreground)] underline underline-offset-4"
+                      : "text-[var(--foreground-secondary)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
+
+          {isEngineRoute && (
+            <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center gap-2 text-xs font-sans text-[var(--foreground-secondary)] px-2">
+              <span className={`h-2 w-2 rounded-full shrink-0 ${statusDotClass}`} aria-hidden="true" />
+              <span>{statusText}</span>
+            </div>
+          )}
         </div>
       )}
     </nav>

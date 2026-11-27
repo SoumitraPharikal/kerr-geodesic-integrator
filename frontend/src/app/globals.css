@@ -1,83 +1,94 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
-/* Scientific Editorial Design Tokens (Pass A & Milestone 2F Refinement) */
-:root, [data-theme="light"] {
-  --background: #FAF9F6;
-  --surface: #FFFFFF;
-  --surface-hover: #F5F3ED;
-  --surface-subtle: #F3EFEA;
-  --border: #DEDAD2;
-  --border-subtle: #E8E4DC;
-  --foreground: #20201E;
-  --foreground-secondary: #55534F;
-  --muted: #68655F;
-  --muted-light: #7E7B74;
+/* Scientific Instrument & Physicist's Notebook Design Tokens */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #eef0f2;
+  --surface: #e3e7eb;
+  --surface-hover: #d8dee4;
+  --surface-subtle: #e7eaee;
+  --border: #c4ccd5;
+  --border-subtle: #d4dbe2;
+  --foreground: #0f1620;
+  --foreground-secondary: #2e3744;
+  --muted: #4f5a68;
+  --muted-light: #64707e;
 
-  /* Restrained single accent (Burnt Orange / Terracotta) - used strictly for primary action, focus, and trajectory */
-  --accent: #B94A24;
-  --accent-hover: #983D1D;
-  --accent-subtle: #FBF4EE;
-  --accent-border: #E3A894;
+  /* Physics-encoded directional palette: prograde = amber, retrograde = blue */
+  --prograde: #a8620a;
+  --retrograde: #1f6fb2;
+
+  /* Primary interactive accent aligned with trajectory / prograde amber */
+  --accent: #a8620a;
+  --accent-hover: #8a4f07;
+  --accent-subtle: #f5efe6;
+  --accent-border: #d9b98f;
 
   /* Plot surface */
-  --plot-bg: #FFFFFF;
-  --plot-grid: #E8E4DC;
-  --plot-axis: #20201E;
-  --plot-trajectory: #B94A24;
-  --plot-horizon: #20201E;
-  --plot-isco: #55534F;
-  --plot-photon: #8C4418;
+  --plot-bg: #f6f7f9;
+  --plot-grid: #d4dbe2;
+  --plot-axis: #0f1620;
+  --plot-trajectory: #a8620a;
+  --plot-horizon: #0f1620;
+  --plot-isco: #4f5a68;
+  --plot-photon: #1f6fb2;
 
-  /* Semantic status colors (used solely for genuine status, never decorative) */
-  --status-ok: #15803D;
-  --status-ok-bg: #F0FDF4;
-  --status-ok-border: #BBF7D0;
-  --status-warn: #B45309;
-  --status-warn-bg: #FFFBEB;
-  --status-warn-border: #FDE68A;
-  --status-error: #B91C1C;
-  --status-error-bg: #FEF2F2;
-  --status-error-border: #FECACA;
+  /* Semantic status colors (WCAG AA contrast) */
+  --status-ok: #156933;
+  --status-ok-bg: #eef7f1;
+  --status-ok-border: #b4d9c0;
+  --status-warn: #945207;
+  --status-warn-bg: #f8f2e8;
+  --status-warn-border: #dec397;
+  --status-error: #a61b1b;
+  --status-error-bg: #faeeee;
+  --status-error-border: #e5b8b8;
 }
 
 [data-theme="dark"] {
-  --background: #0E1013;
-  --surface: #15181C;
-  --surface-hover: #1B1E23;
-  --surface-subtle: #191C21;
-  --border: #262930;
-  --border-subtle: #1E2127;
-  --foreground: #ECEFF1;
-  --foreground-secondary: #B0B5BF;
-  --muted: #9CA3AF;
-  --muted-light: #6B7280;
+  color-scheme: dark;
+  --background: #0b1016;
+  --surface: #121a24;
+  --surface-hover: #192432;
+  --surface-subtle: #151e2a;
+  --border: #243040;
+  --border-subtle: #1c2634;
+  --foreground: #e6e9ed;
+  --foreground-secondary: #c2c9d2;
+  --muted: #9aa5b2;
+  --muted-light: #7d8998;
 
-  /* Restrained accent in dark mode */
-  --accent: #EA580C;
-  --accent-hover: #C2410C;
-  --accent-subtle: #2A170A;
-  --accent-border: #7C2D12;
+  /* Physics-encoded directional palette */
+  --prograde: #e8a33d;
+  --retrograde: #5aa7e0;
+
+  /* Primary interactive accent */
+  --accent: #e8a33d;
+  --accent-hover: #f2b454;
+  --accent-subtle: #241d12;
+  --accent-border: #66491d;
 
   /* Plot surface */
-  --plot-bg: #15181C;
-  --plot-grid: #22262E;
-  --plot-axis: #ECEFF1;
-  --plot-trajectory: #EA580C;
-  --plot-horizon: #000000;
-  --plot-isco: #64748B;
-  --plot-photon: #D97706;
+  --plot-bg: #0e141c;
+  --plot-grid: #1e2938;
+  --plot-axis: #e6e9ed;
+  --plot-trajectory: #e8a33d;
+  --plot-horizon: #e6e9ed;
+  --plot-isco: #9aa5b2;
+  --plot-photon: #5aa7e0;
 
-  /* Semantic status colors */
-  --status-ok: #4ADE80;
-  --status-ok-bg: #052E16;
-  --status-ok-border: #14532D;
-  --status-warn: #FBBF24;
-  --status-warn-bg: #451A03;
-  --status-warn-border: #78350F;
-  --status-error: #F87171;
-  --status-error-bg: #450A0A;
-  --status-error-border: #7F1D1D;
+  /* Semantic status colors (WCAG AA contrast) */
+  --status-ok: #4ade80;
+  --status-ok-bg: #0c2417;
+  --status-ok-border: #1e4d33;
+  --status-warn: #e8a33d;
+  --status-warn-bg: #261d10;
+  --status-warn-border: #5c431c;
+  --status-error: #f87171;
+  --status-error-bg: #2a1215;
+  --status-error-border: #66242a;
 }
 
 @theme inline {
@@ -91,6 +102,8 @@
   --color-foreground-secondary: var(--foreground-secondary);
   --color-muted: var(--muted);
   --color-muted-light: var(--muted-light);
+  --color-prograde: var(--prograde);
+  --color-retrograde: var(--retrograde);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-subtle: var(--accent-subtle);
@@ -99,29 +112,40 @@
   --color-status-warn: var(--status-warn);
   --color-status-error: var(--status-error);
   --font-serif: var(--font-newsreader), "Newsreader", Georgia, Cambria, serif;
-  --font-sans: var(--font-ibm-plex-sans), "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-hanken-grotesk), "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
 }
 
 html {
   background-color: var(--background);
   color: var(--foreground);
-  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
 }
 
-/* Enforce tabular numerals on all numeric elements */
-.tabular-nums, .font-mono, td.numeric {
+/* Editorial prose measure & type scale */
+.prose-notebook {
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  line-height: 1.65;
+  max-width: 68ch;
+}
+
+/* Enforce tabular numerals on numeric controls, captions, and readouts */
+.tabular-nums,
+.font-mono,
+td.numeric,
+input[type="number"],
+select {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
@@ -156,7 +180,9 @@ body {
 
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  *, ::before, ::after {
+  *,
+  ::before,
+  ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -178,7 +204,7 @@ body {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 3px;
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted-light);

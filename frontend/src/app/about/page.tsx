@@ -1,7 +1,12 @@
 "use client";
 
 import React from "react";
-import { ExternalLink, Copy, Check } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Check, Copy, ExternalLink } from "lucide-react";
+import MathBlock from "@/components/MathBlock";
+import MarginNote from "@/components/MarginNote";
+
+const REPO_URL = "https://github.com/SoumitraPharikal/kerr-geodesic-integrator";
 
 function GithubIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -24,200 +29,278 @@ export default function AboutPage() {
   year         = {2026},
   version      = {v1.0.0},
   publisher    = {GitHub},
-  url          = {https://github.com/SoumitraPharikal/kerr-geodesic-integrator}
+  url          = {${REPO_URL}}
 }`;
 
   const handleCopyBibtex = () => {
     navigator.clipboard.writeText(bibtex);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 1800);
   };
 
   return (
-    <div className="flex flex-col flex-1 pb-20">
-      {/* Page Header */}
-      <div className="border-b border-[var(--border)] py-8 px-4 sm:px-6 lg:px-8 bg-[var(--surface)]">
-        <div className="mx-auto max-w-4xl">
-          <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-normal text-[var(--foreground)] tracking-tight">
-            About the Project
+    <div className="flex flex-col flex-1 pb-24">
+      {/* Header */}
+      <header className="border-b border-[var(--border)] bg-[var(--surface)] py-10 sm:py-12 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl space-y-4">
+          <h1 className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-normal text-[var(--foreground)] tracking-tight leading-[1.15]">
+            A path through curved spacetime.
           </h1>
-          <p className="text-xs sm:text-sm text-[var(--foreground-secondary)] font-sans mt-1.5 max-w-2xl leading-relaxed">
-            Motivation, computational physics principles, and personal research background behind Kerr Geodesics Lab.
+          <p className="prose-notebook text-[var(--foreground-secondary)]">
+            I built Kerr Geodesics Lab while studying general relativity and numerical physics. I
+            wanted to connect the equations of motion to something I could inspect: an orbit, its
+            turning points, and the quantities that should remain conserved along it.
           </p>
+          <div className="flex flex-wrap items-center gap-3 pt-1 font-sans">
+            <Link
+              href="/explorer"
+              className="inline-flex items-center gap-2 rounded-[2px] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-4 py-2 text-sm font-medium"
+            >
+              <span>Open Explorer</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/mathematics"
+              className="inline-flex items-center gap-2 rounded-[2px] border border-[var(--border)] bg-[var(--background)] hover:bg-[var(--surface-hover)] text-[var(--foreground)] px-4 py-2 text-sm font-medium"
+            >
+              <span>Read the mathematics</span>
+            </Link>
+          </div>
         </div>
-      </div>
+      </header>
 
-      <div className="mx-auto max-w-4xl w-full px-4 sm:px-6 lg:px-8 mt-8 space-y-10">
-        {/* Author Block */}
-        <div className="rounded-[4px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-[var(--foreground-secondary)]">
-              Author &amp; Maintainer
+      <div className="mx-auto max-w-6xl w-full px-4 sm:px-6 lg:px-8 mt-12 space-y-14">
+        {/* 1. Four questions */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 border-t border-[var(--border)] pt-8">
+          <div className="lg:col-span-4 space-y-2">
+            <h2 className="font-serif text-2xl font-normal text-[var(--foreground)]">
+              Questions the lab explores
+            </h2>
+          </div>
+          <div className="lg:col-span-8 space-y-4">
+            <ul className="space-y-3 text-sm font-sans text-[var(--foreground-secondary)] leading-relaxed list-disc pl-5">
+              <li>
+                <strong className="text-[var(--foreground)] font-medium">
+                  Spin-split photon orbits:
+                </strong>{" "}
+                How black hole spin <MathBlock math="a" display={false} /> splits the circular photon
+                sphere into distinct{" "}
+                <span className="text-[var(--prograde)] font-medium">prograde</span> (
+                <MathBlock math="r_{\rm ph}^+" display={false} />) and{" "}
+                <span className="text-[var(--retrograde)] font-medium">retrograde</span> (
+                <MathBlock math="r_{\rm ph}^-" display={false} />) radii.
+              </li>
+              <li>
+                <strong className="text-[var(--foreground)] font-medium">
+                  Strong-field orbital precession:
+                </strong>{" "}
+                How bound timelike orbits outside the innermost stable circular orbit depart from
+                closed Newtonian ellipses.
+              </li>
+              <li>
+                <strong className="text-[var(--foreground)] font-medium">
+                  Equatorial photon capture and scattering:
+                </strong>{" "}
+                Where the boundary between horizon capture and escape lies in terms of the impact
+                parameter <MathBlock math="b = L_z / E" display={false} /> for equatorial photons.
+              </li>
+              <li>
+                <strong className="text-[var(--foreground)] font-medium">
+                  Numerical turning points and horizon cutoffs:
+                </strong>{" "}
+                Where an orbit reverses radial direction (<MathBlock math="p_r = 0" display={false} />)
+                or approaches the coordinate horizon, and what its 8D phase-space state is there.
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        {/* 2. How it works & Architecture */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 border-t border-[var(--border)] pt-8">
+          <div className="lg:col-span-4 space-y-3">
+            <h2 className="font-serif text-2xl font-normal text-[var(--foreground)]">
+              How it is built
+            </h2>
+            <MarginNote label="Live vs. saved">
+              Explorer runs live integrations against the Python API. Gallery displays saved
+              snapshots recorded at commit <span className="font-mono">062b20c</span>.
+            </MarginNote>
+          </div>
+          <div className="lg:col-span-8 space-y-4 prose-notebook text-[var(--foreground-secondary)]">
+            <p>
+              The Python engine formulates geodesic motion using Hamilton&apos;s equations in
+              Boyer–Lindquist coordinates. It integrates the resulting 8D system with adaptive
+              numerical methods (<span className="font-mono text-sm">DOP853</span> by default) and
+              refines event roots with <span className="font-mono text-sm">brentq</span> on
+              SciPy&apos;s dense-output interpolant.
+            </p>
+            <p>
+              The numerical methods are <strong>non-symplectic</strong>, so conservation of{" "}
+              <MathBlock math="E" display={false} />, <MathBlock math="L_z" display={false} />,{" "}
+              <MathBlock math="\mathcal{Q}" display={false} />, and{" "}
+              <MathBlock math="\mathcal{H}" display={false} /> is not exact by construction. Across
+              the seven recorded preset runs, measured Hamiltonian drift is at most approximately{" "}
+              <MathBlock math="4 \times 10^{-13}" display={false} /> (see{" "}
+              <Link href="/validation" className="text-[var(--accent)] hover:underline">
+                Validation
+              </Link>{" "}
+              for per-preset results and limits).
+            </p>
+            <div className="border-y border-[var(--border-subtle)] py-3 font-mono text-xs text-[var(--foreground)]">
+              Python engine (src/geodesics) → FastAPI (geodesics.api) → Next.js interface
             </div>
-            <div className="font-serif text-lg font-medium text-[var(--foreground)]">
-              Soumitra Pharikal
+            <p className="text-sm font-sans">
+              The browser renders trajectories, readouts, and analytical reference surfaces without
+              independently integrating orbits. For endpoints and deployment details, see{" "}
+              <Link href="/docs" className="text-[var(--accent)] hover:underline">
+                Docs
+              </Link>
+              .
+            </p>
+          </div>
+        </section>
+
+        {/* 3. Scope & Limitations */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 border-t border-[var(--border)] pt-8">
+          <div className="lg:col-span-4">
+            <h2 className="font-serif text-2xl font-normal text-[var(--foreground)]">
+              Scope and limitations
+            </h2>
+          </div>
+          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm font-sans text-[var(--foreground-secondary)] leading-relaxed">
+            <div className="space-y-2">
+              <h3 className="font-serif text-lg text-[var(--foreground)]">Implemented</h3>
+              <ul className="list-disc pl-4 space-y-1.5">
+                <li>Seven equatorial Schwarzschild and sub-extremal Kerr presets</li>
+                <li>Live Explorer integration with CSV and JSON export</li>
+                <li>Static Gallery snapshots with conserved-quantity readouts</li>
+                <li>
+                  Backend analytical shadow boundary endpoint (
+                  <span className="font-mono text-xs">POST /api/v1/shadows</span>)
+                </li>
+              </ul>
             </div>
-            <div className="text-xs font-sans text-[var(--foreground-secondary)]">
-              BS-MS Physics, IISER Berhampur
+            <div className="space-y-2">
+              <h3 className="font-serif text-lg text-[var(--foreground)]">
+                Not implemented or claimed
+              </h3>
+              <ul className="list-disc pl-4 space-y-1.5">
+                <li>
+                  The{" "}
+                  <Link href="/shadows" className="underline underline-offset-2 hover:text-[var(--foreground)]">
+                    Shadow Lab
+                  </Link>{" "}
+                  frontend UI remains a planned placeholder
+                </li>
+                <li>No inclined (off-equatorial) presets in the current lab UI</li>
+                <li>No full numerical relativity, ray tracing, or accretion-disk modeling</li>
+                <li>No external peer review or observational fitting claimed</li>
+              </ul>
             </div>
           </div>
+        </section>
 
-          <div className="flex items-center gap-3">
+        {/* 4. Author */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 border-t border-[var(--border)] pt-8">
+          <div className="lg:col-span-4">
+            <h2 className="font-serif text-2xl font-normal text-[var(--foreground)]">
+              Author
+            </h2>
+          </div>
+          <div className="lg:col-span-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-y border-[var(--border)] py-5">
+            <div className="space-y-1">
+              <div className="font-serif text-lg text-[var(--foreground)]">Soumitra Pharikal</div>
+              <div className="text-sm font-sans text-[var(--foreground-secondary)]">
+                BS-MS Physics student at IISER Berhampur, interested in general relativity and
+                computational physics.
+              </div>
+            </div>
             <a
-              href="https://github.com/SoumitraPharikal/kerr-geodesic-integrator"
+              href={REPO_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-[3px] border border-[var(--border)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-hover)] px-3 py-1.5 text-xs font-sans text-[var(--foreground)] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-[2px] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] px-3 py-1.5 text-xs font-sans text-[var(--foreground)] shrink-0 self-start sm:self-auto"
             >
               <GithubIcon className="h-3.5 w-3.5 text-[var(--muted)]" />
               <span>GitHub</span>
               <ExternalLink className="h-3 w-3 text-[var(--muted)]" />
             </a>
           </div>
-        </div>
-
-        {/* Essay Section 1: Why I Built This Project */}
-        <section className="space-y-3 font-sans text-xs sm:text-sm text-[var(--foreground-secondary)] leading-relaxed">
-          <h2 className="font-serif text-lg font-normal text-[var(--foreground)] tracking-tight">
-            Why I Built This Project
-          </h2>
-          <p>
-            I built Kerr Geodesics Lab to explore the mathematical structure and observational signatures of rotating black holes through exact, high-order numerical mechanics. While studying General Relativity, I found that many accessible educational tools either rely on post-Newtonian approximations or use low-order integration routines that fail to preserve non-trivial first integrals over extended dynamical timescales.
-          </p>
-          <p>
-            I wanted to create an instrument where numerical trajectories respect the underlying Killing symmetries of curved spacetime to machine precision. By casting the geodesic equations into canonical Hamiltonian form and using embedded 8th-order Runge-Kutta steppers with rigorous local error control, the integrator preserves energy, angular momentum, and the Carter constant across thousands of orbital revolutions without unphysical secular drift.
-          </p>
         </section>
 
-        {/* Essay Section 2: Physical & Numerical Questions */}
-        <section className="space-y-3 font-sans text-xs sm:text-sm text-[var(--foreground-secondary)] leading-relaxed">
-          <h2 className="font-serif text-lg font-normal text-[var(--foreground)] tracking-tight">
-            Physical &amp; Numerical Questions Explored
-          </h2>
-          <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-[var(--muted)]">
-            <li>
-              <strong className="text-[var(--foreground)]">Frame-Dragging and Photon Orbits:</strong> How does black hole spin <span className="font-mono text-[var(--foreground)]">a</span> split the degenerate Schwarzschild photon sphere into distinct prograde (<span className="font-mono text-[var(--foreground)]">r_ph⁺</span>) and retrograde (<span className="font-mono text-[var(--foreground)]">r_ph⁻</span>) circular null orbits?
-            </li>
-            <li>
-              <strong className="text-[var(--foreground)]">Relativistic Periastron Precession:</strong> How does spacetime curvature outside the innermost stable circular orbit (ISCO) advance the periapsis of eccentric timelike orbits, producing rosette trajectories in Boyer-Lindquist coordinates?
-            </li>
-            <li>
-              <strong className="text-[var(--foreground)]">Critical Photon Scattering:</strong> How does the asymptotic impact parameter <span className="font-mono text-[var(--foreground)]">b = L_z / E</span> govern the knife-edge boundary between horizon capture and escape back to spatial infinity?
-            </li>
-            <li>
-              <strong className="text-[var(--foreground)]">Phase-Space Event Roots:</strong> How accurately can bracketed zero-finders isolate discrete physical transitions (radial turning points and horizon crossings) without interpolating from nearby steps?
-            </li>
-          </ul>
-        </section>
-
-        {/* Essay Section 3: Single-Source-of-Physics Architecture */}
-        <section className="space-y-3 font-sans text-xs sm:text-sm text-[var(--foreground-secondary)] leading-relaxed">
-          <h2 className="font-serif text-lg font-normal text-[var(--foreground)] tracking-tight">
-            Role of the Validated Python Engine
-          </h2>
-          <p>
-            A core principle of this project is strict separation of concerns: <strong className="text-[var(--foreground)]">the browser never computes physics</strong>. The Next.js frontend acts solely as an interactive scientific interface. Every trajectory point, four-momentum coordinate, conserved quantity, and event root is computed by the validated Python package (<span className="font-mono text-[var(--foreground)]">src/geodesics/</span>) and served via FastAPI.
-          </p>
-          <p>
-            When a physical quantity (such as Kerr ISCO or horizon radii) is not supplied by the backend API schema, the frontend strictly omits those visual markers rather than attempting analytical derivations in TypeScript. This guarantees that every visual element displayed in the application reflects genuine physics engine output.
-          </p>
-        </section>
-
-        {/* Essay Section 4: Current Status & Future Roadmap */}
-        <section className="space-y-3 font-sans text-xs sm:text-sm text-[var(--foreground-secondary)] leading-relaxed">
-          <h2 className="font-serif text-lg font-normal text-[var(--foreground)] tracking-tight">
-            Implementation Scope &amp; Future Work
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-            <div className="rounded-[3px] border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-              <div className="text-xs font-mono font-medium uppercase tracking-wider text-[var(--status-ok)]">
-                Implemented (Release v1.0.0)
-              </div>
-              <ul className="text-xs text-[var(--muted)] space-y-1 list-disc pl-4 font-sans">
-                <li>7 registered presets for Schwarzschild and Kerr metrics</li>
-                <li>8th-order DOP853 and 5th-order RKCK45 adaptive steppers</li>
-                <li>Exact event root-finding with 8D phase-space vectors</li>
-                <li>Machine-precision Hamiltonian drift (|ΔH| ≤ 10⁻¹⁵)</li>
-                <li>Raw CSV trajectory and JSON metadata export</li>
-              </ul>
-            </div>
-
-            <div className="rounded-[3px] border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-              <div className="text-xs font-mono font-medium uppercase tracking-wider text-[var(--accent)]">
-                Future Extensions
-              </div>
-              <ul className="text-xs text-[var(--muted)] space-y-1 list-disc pl-4 font-sans">
-                <li>Interactive Bardeen celestial shadow boundary contours</li>
-                <li>Off-equatorial spherical photon orbits with Carter constant</li>
-                <li>Gravitational-wave inspiral approximations (EMRI kludges)</li>
-                <li>Kruskal-Szekeres and Kerr-Schild coordinate visualizers</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* Essay Section 5: Acknowledgements */}
-        <section className="space-y-3 font-sans text-xs sm:text-sm text-[var(--foreground-secondary)] leading-relaxed">
-          <h2 className="font-serif text-lg font-normal text-[var(--foreground)] tracking-tight">
-            Acknowledgements &amp; References
-          </h2>
-          <p className="text-xs text-[var(--muted)] leading-relaxed">
-            This work builds upon foundational research in relativistic mechanics and numerical astrophysics:
-          </p>
-          <ul className="list-disc pl-5 space-y-1.5 text-xs text-[var(--muted)]">
-            <li>S. Chandrasekhar, <em>The Mathematical Theory of Black Holes</em>, Oxford University Press (1983).</li>
-            <li>B. Carter, <em>Global structure of the Kerr family of gravitational fields</em>, Phys. Rev. 174, 1559 (1968).</li>
-            <li>J. M. Bardeen, <em>Timelike and null geodesics in the Kerr metric</em>, Black Holes (Les Houches), 215–239 (1973).</li>
-            <li>E. Hairer, S. P. Nørsett, and G. Wanner, <em>Solving Ordinary Differential Equations I: Nonstiff Problems</em>, Springer (1993).</li>
-          </ul>
-          <p className="text-xs text-[var(--muted)] pt-1">
-            Built using Python, NumPy, SciPy, FastAPI, Pydantic, Next.js, React, Tailwind CSS, and KaTeX.
-          </p>
-        </section>
-
-        {/* Section 6: Citation */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-serif text-lg font-normal text-[var(--foreground)] tracking-tight">
-              Citation
+        {/* 5. References, Citation & License */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 border-t border-[var(--border)] pt-8">
+          <div className="lg:col-span-4">
+            <h2 className="font-serif text-2xl font-normal text-[var(--foreground)]">
+              References and license
             </h2>
-            <button
-              type="button"
-              onClick={handleCopyBibtex}
-              className="inline-flex items-center gap-1 text-xs font-sans text-[var(--muted)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-[var(--status-ok)]" /> : <Copy className="h-3.5 w-3.5" />}
-              <span>{copied ? "Copied" : "Copy BibTeX"}</span>
-            </button>
           </div>
+          <div className="lg:col-span-8 space-y-8">
+            <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm font-sans text-[var(--foreground-secondary)] leading-relaxed">
+              <li>
+                S. Chandrasekhar, <em>The Mathematical Theory of Black Holes</em>, Oxford University
+                Press (1983).
+              </li>
+              <li>
+                B. Carter, <em>Global structure of the Kerr family of gravitational fields</em>, Phys.
+                Rev. 174, 1559 (1968).
+              </li>
+              <li>
+                J. M. Bardeen, W. H. Press, and S. A. Teukolsky,{" "}
+                <em>Rotating black holes: locally nonrotating frames, energy extraction, and scalar synchrotron radiation</em>,
+                Astrophys. J. 178, 347 (1972).
+              </li>
+              <li>
+                J. M. Bardeen, <em>Timelike and null geodesics in the Kerr metric</em>, Black Holes
+                (Les Houches), 215–239 (1973).
+              </li>
+              <li>
+                J. R. Dormand and P. J. Prince,{" "}
+                <em>A family of embedded Runge-Kutta formulae</em>, J. Comput. Appl. Math. 6, 19–26
+                (1980).
+              </li>
+              <li>
+                E. Hairer, S. P. Nørsett, and G. Wanner,{" "}
+                <em>Solving Ordinary Differential Equations I: Nonstiff Problems</em>, Springer (1993).
+              </li>
+            </ul>
 
-          <div className="rounded-[3px] border border-[var(--border)] bg-[var(--surface-subtle)] p-4 overflow-x-auto">
-            <pre className="text-xs font-mono text-[var(--foreground)] whitespace-pre tabular-nums">
-              {bibtex}
-            </pre>
-          </div>
-        </section>
-
-        {/* Section 7: License */}
-        <section className="border-t border-[var(--border)] pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="font-serif text-sm font-normal text-[var(--foreground)]">
-              Open Source License
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-sans font-medium uppercase tracking-wider text-[var(--muted)]">
+                  Citation (BibTeX)
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyBibtex}
+                  className="inline-flex items-center gap-1 text-xs font-sans text-[var(--muted)] hover:text-[var(--foreground)] cursor-pointer"
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-[var(--status-ok)]" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                  <span>{copied ? "Copied" : "Copy BibTeX"}</span>
+                </button>
+              </div>
+              <pre className="rounded-[2px] border border-[var(--border)] bg-[var(--surface)] p-4 overflow-x-auto text-xs font-mono text-[var(--foreground)] tabular-nums">
+                {bibtex}
+              </pre>
             </div>
-            <p className="text-xs font-sans text-[var(--muted)]">
-              Released under the permissive MIT License for academic, educational, and research use.
-            </p>
-          </div>
 
-          <a
-            href="https://github.com/SoumitraPharikal/kerr-geodesic-integrator/blob/master/LICENSE"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-[3px] border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] px-3 py-1.5 text-xs font-sans text-[var(--foreground)] transition-colors cursor-pointer"
-          >
-            <span>MIT License</span>
-            <ExternalLink className="h-3 w-3 text-[var(--muted)]" />
-          </a>
+            <div className="border-t border-[var(--border-subtle)] pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-sans text-[var(--muted)]">
+              <span>Released under the MIT License (release tag v1.0.0).</span>
+              <a
+                href={`${REPO_URL}/blob/master/LICENSE`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[var(--foreground)] hover:underline"
+              >
+                <span>MIT License</span>
+                <ExternalLink className="h-3 w-3 text-[var(--muted)]" />
+              </a>
+            </div>
+          </div>
         </section>
       </div>
     </div>

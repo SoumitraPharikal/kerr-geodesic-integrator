@@ -2,7 +2,7 @@
 \label{sec:numerical_architecture}
 
 \subsection{Dormand--Prince 8(5,3) Adaptive Integrator}
-The numerical integration of Hamilton's equations \eqref{eq:hamilton_x_dot}--\eqref{eq:hamilton_p_dot} is performed using the high-order explicit Runge--Kutta solver Dormand--Prince 8(5,3) (\textsc{DOP853}) \cite{DormandPrince1980,Hairer1993}. This method computes a 12-stage 8th-order accurate solution with embedded error estimators of order $q = 7$ for local step-size control.
+The numerical integration of Hamilton's equations \eqref{eq:hamilton_x_dot}--\eqref{eq:hamilton_p_dot} is performed using SciPy's \texttt{solve\_ivp} driver with the high-order explicit Runge--Kutta solver Dormand--Prince 8(5,3) (\textsc{DOP853}) \cite{DormandPrince1980,Hairer1993} as the default method. The solver interface also supports \textsc{RK45} (explicit Dormand--Prince 5(4), not Cash--Karp), \textsc{RK23}, \textsc{Radau}, \textsc{BDF}, and \textsc{LSODA}. All explicit Runge--Kutta methods in this family are adaptive and \textit{non-symplectic}. \textsc{DOP853} computes a 12-stage 8th-order accurate solution with embedded error estimators of order $q = 7$ for local step-size control.
 
 Given an accepted state $y_n$ at affine parameter $\lambda_n$ with step size $h_n$, the next trial step size $h_{n+1}$ is computed according to single-step error-based adaptive step-size control:
 \begin{equation}
@@ -17,7 +17,7 @@ where $1/(q+1) = 1/8$ corresponds to the 7th-order error estimator, $\text{fac} 
 where $\hat{e}_{n, i}$ combines the embedded lower-order stage differences. Default numerical tolerances are configured to $\text{rtol} = 10^{-10}$ and $\text{atol} = 10^{-12}$, maintaining phase-space constraint preservation near machine precision over hundreds of orbital dynamical times.
 
 \subsection{Continuous Dense Output and Event Detection}
-A major architectural requirement in relativistic ray-tracing is the exact localization of physical boundaries, such as event horizons, turning points, and detector planes. Traditional fixed-step integration or post-hoc linear interpolation introduces unacceptably large $\mathcal{O}(h^2)$ interpolation errors into root-finding, compromising high-order boundary localization.
+A major architectural requirement in relativistic ray-tracing is the accurate numerical localization of physical boundaries, such as event horizons, turning points, and detector planes. Traditional fixed-step integration or post-hoc linear interpolation introduces unacceptably large $\mathcal{O}(h^2)$ interpolation errors into root-finding, compromising high-order boundary localization.
 
 The \textsc{Kerr Geodesic Integrator} leverages \textsc{DOP853}'s continuous polynomial interpolant (dense output) \cite{Hairer1993}. Within any accepted step $[\lambda_n, \lambda_n + h_n]$, the dense output provides an $\mathcal{O}(h^8)$-accurate state vector:
 \begin{equation}
@@ -26,7 +26,7 @@ The \textsc{Kerr Geodesic Integrator} leverages \textsc{DOP853}'s continuous pol
 \end{equation}
 where $k_j = f(\lambda_n + c_j h_n, Y_j)$ are the Runge--Kutta stage derivative evaluations ($s^* = 16$ stages for continuous output), and $b_j^*(\theta)$ are polynomial weighting functions of the normalized step fraction $\theta$.
 
-When an event condition $g(y(\lambda)) = 0$ changes sign across an integration step ($g(y_n) \cdot g(y_{n+1}) \le 0$), the root $\lambda^*$ is isolated by combining the polynomial interpolant with Brent's hybrid bisection/secant method \cite{Brent1973,Virtanen2020}. This guarantees that boundary intersections are resolved to relative floating-point precision ($\Delta \lambda^* / \lambda_n \sim \epsilon_{\rm mach} \approx 10^{-15}$).
+When an event condition $g(y(\lambda)) = 0$ changes sign across an integration step ($g(y_n) \cdot g(y_{n+1}) \le 0$), the root $\lambda^*$ is isolated by combining the polynomial interpolant with Brent's hybrid bisection/secant method (\texttt{brentq}) \cite{Brent1973,Virtanen2020} at solver tolerances $\texttt{xtol} = \texttt{rtol} = 4\epsilon_{\rm mach}$. Thus, $\lambda^*$ reflects floating-point root refinement of the $\mathcal{O}(h^8)$ continuous polynomial interpolant rather than exact analytical boundary intersection.
 
 \subsection{Core Geodesic Termination Events}
 The package defines three standardized physical event classes:
@@ -56,4 +56,4 @@ When multiple terminal events trigger within the same integration interval $[\la
     \lambda^*_{\rm terminal} = \min_{j} \left\{ \lambda^*_j \;\middle|\; g_j(y(\lambda^*_j)) = 0, \; \text{terminal}_j = \text{True} \right\}.
     \label{eq:earliest_root_selection}
 \end{equation}
-The trajectory is truncated exactly at $\lambda^*_{\rm terminal}$, preventing unphysical extrapolation beyond physical boundaries and guaranteeing deterministic trajectory classification.
+The trajectory is truncated at the numerically refined earliest terminal event $\lambda^*_{\rm terminal}$, preventing unphysical extrapolation beyond physical boundaries and guaranteeing deterministic trajectory classification.

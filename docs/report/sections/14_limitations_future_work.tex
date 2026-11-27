@@ -11,7 +11,11 @@ To preserve scientific integrity, we explicitly document the physical, geometric
     \item \textbf{Non-Uniformity in the Schwarzschild Limit ($a \to 0$):}  
     The near-polar asymptotic expansions are established for each fixed nonzero spin $a > 0$. They cannot be extended uniformly to the open limit $a \to 0$ because the denominator $a(r - M)$ in $\xi(r)$ and $\eta(r)$ collapses. For exact $a = 0$, the specialized Schwarzschild solver must be used directly.
     \item \textbf{Sampled Residuals vs. Certified Continuous Bounds:}  
-    The 10,001-node residual audit provides high-confidence sampled numerical evidence of $\mathcal{O}(s^2)$ scaling. However, it does not constitute a certified analytical upper bound on the continuous supremum $\sup_\phi \|\mathbf{r}_{\rm num} - \mathbf{r}_{\rm asym}\|$ over the continuum.
+    The 10,001-node residual audit provides high-confidence sampled numerical evidence of $\mathcal{O}(s^2)$ scaling. However, it does not constitute a certified analytical upper bound on the continuous supremum $\sup_\phi \|\mathbf{r}_{\rm num} - \mathbf{r}_{\rm asym}\|$ over the continuum. Similarly, the seven-preset Hamiltonian drift values in Table~\ref{tab:preset_drift_ledger} are run-specific diagnostics rather than universal error bounds.
+    \item \textbf{Internal Verification vs. Independent Physical Validation:}  
+    All automated tests (4,511 Python tests and 18 frontend TypeScript tests) verify internal mathematical identities, analytical limits, and API/UI contracts. No external peer review, third-party code certification, or observational data fitting is claimed.
+    \item \textbf{Equatorial Preset Scope and Planned Shadow UI:}  
+    While the core Python engine supports arbitrary off-equatorial trajectories ($\mathcal{Q} \neq 0$) and analytical shadow boundaries (\texttt{POST /api/v1/shadows}), the seven curated web presets are restricted to equatorial motion ($\mathcal{Q} = 0$), and the \texttt{/shadows} frontend interface remains a planned placeholder.
 \end{enumerate}
 
 \subsection{Future Research Directions}

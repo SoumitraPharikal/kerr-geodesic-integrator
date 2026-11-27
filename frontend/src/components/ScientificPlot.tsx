@@ -10,6 +10,105 @@ export interface PlotPoint {
   y: number;
 }
 
+export interface MarkerLabelInput {
+  id: string;
+  svgX: number;
+  svgY: number;
+  text: string;
+  preferredAnchor?: "start" | "end";
+  preferredDy?: number;
+}
+
+export interface MarkerLabelPlacement {
+  dx: number;
+  dy: number;
+  textAnchor: "start" | "end";
+}
+
+export interface LabelRect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+export function buildLabelRect(
+  x: number,
+  y: number,
+  text: string,
+  textAnchor: "start" | "middle" | "end" = "start",
+  pad = 2
+): LabelRect {
+  const width = Math.max(18, text.length * 7.4);
+  const left =
+    textAnchor === "start"
+      ? x
+      : textAnchor === "end"
+      ? x - width
+      : x - width / 2;
+  const right = left + width;
+  return {
+    left: left - pad,
+    right: right + pad,
+    top: y - 11 - pad,
+    bottom: y + 3 + pad,
+  };
+}
+
+function rectsOverlap(a: LabelRect, b: LabelRect): boolean {
+  return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+}
+
+/**
+ * Computes non-overlapping SVG label offsets for trajectory markers (e.g. λ₀, Turning pt, λ_end)
+ * against both other markers and fixed axis tick/title obstacles, while keeping marker circles
+ * anchored to exact plotted coordinates.
+ */
+export function computeMarkerLabelPlacements(
+  markers: MarkerLabelInput[],
+  fixedObstacles: LabelRect[] = [],
+  plotSize = 560
+): Record<string, MarkerLabelPlacement> {
+  const placed: LabelRect[] = [...fixedObstacles];
+  const placements: Record<string, MarkerLabelPlacement> = {};
+
+  const inBounds = (box: LabelRect) =>
+    box.left >= 6 && box.right <= plotSize - 6 && box.top >= 6 && box.bottom <= plotSize - 6;
+
+  for (const m of markers) {
+    const candidates: MarkerLabelPlacement[] = [
+      {
+        dx: m.preferredAnchor === "end" ? -7 : 6,
+        dy: m.preferredDy ?? -5,
+        textAnchor: m.preferredAnchor ?? "start",
+      },
+      { dx: 6, dy: 15, textAnchor: "start" },
+      { dx: -7, dy: -6, textAnchor: "end" },
+      { dx: -7, dy: 15, textAnchor: "end" },
+      { dx: 6, dy: -20, textAnchor: "start" },
+      { dx: -7, dy: -20, textAnchor: "end" },
+      { dx: 6, dy: 29, textAnchor: "start" },
+      { dx: -7, dy: 29, textAnchor: "end" },
+      { dx: 6, dy: -34, textAnchor: "start" },
+      { dx: -7, dy: -34, textAnchor: "end" },
+    ];
+
+    let chosen = candidates[0];
+    for (const c of candidates) {
+      const box = buildLabelRect(m.svgX + c.dx, m.svgY + c.dy, m.text, c.textAnchor, 3);
+      if (inBounds(box) && !placed.some((p) => rectsOverlap(p, box))) {
+        chosen = c;
+        break;
+      }
+    }
+
+    placed.push(buildLabelRect(m.svgX + chosen.dx, m.svgY + chosen.dy, m.text, chosen.textAnchor, 3));
+    placements[m.id] = chosen;
+  }
+
+  return placements;
+}
+
 export interface ScientificPlotProps {
   simulationData?: SimulationResponse | null;
   presetId?: string;
@@ -315,23 +414,23 @@ export function ScientificPlot({
               </text>
             ))}
 
-            {/* Axis direction indicators */}
+            {/* Axis direction indicators (placed below +x axis to avoid radial tick collisions) */}
             <text
-              x={size - 28}
-              y={center - 6}
+              x={size - 20}
+              y={center + 16}
               fill="var(--foreground-secondary)"
               fontSize="12"
-              fontFamily="var(--font-ibm-plex-sans), sans-serif"
+              fontFamily="var(--font-sans)"
               textAnchor="end"
             >
-              {projection === "equatorial" ? "+x / M" : "+x / M"}
+              +x / M
             </text>
             <text
               x={center + 6}
               y={32}
               fill="var(--foreground-secondary)"
               fontSize="12"
-              fontFamily="var(--font-ibm-plex-sans), sans-serif"
+              fontFamily="var(--font-sans)"
             >
               {projection === "equatorial" ? "+y / M" : "+z / M"}
             </text>
@@ -427,56 +526,138 @@ export function ScientificPlot({
             />
           )}
 
-          {/* Triggered Event Roots */}
-          {events.map((ev, i) => (
-            <g key={`event-${i}`} transform={`translate(${toSvgX(ev.x)}, ${toSvgY(ev.y)})`}>
-              <circle r="4" fill="none" stroke="var(--status-error)" strokeWidth="1.25" />
-              <circle r="2" fill="var(--status-error)" />
-              <text
-                x="6"
-                y="-4"
-                fill="var(--status-error)"
-                fontSize="12"
-                fontFamily="var(--font-ibm-plex-mono), monospace"
-              >
-                {ev.name === "radial_turning_point" ? "Turning pt" : ev.name}
-              </text>
-            </g>
-          ))}
+          {/* Triggered Event Roots + Initial & Terminal Condition Markers with collision-free label placement */}
+          {(() => {
+            const fixedObstacles: LabelRect[] = [
+              ...gridRadii.map((r) =>
+                buildLabelRect(center + r * scale + 3, center - 4, `${r} M`, "start", 3)
+              ),
+              buildLabelRect(size - 20, center + 16, "+x / M", "end", 3),
+              buildLabelRect(center + 6, 32, projection === "equatorial" ? "+y / M" : "+z / M", "start", 3),
+            ];
+            if (!isNaN(rIsco)) {
+              fixedObstacles.push(buildLabelRect(center, center - rIsco * scale - 4, "r_ISCO = 6 M (Schw)", "middle", 3));
+            }
+            if (!isNaN(rPhoton)) {
+              fixedObstacles.push(buildLabelRect(center, center - rPhoton * scale - 4, "r_ph = 3 M (Schw)", "middle", 3));
+            }
+            if (!isNaN(rPlus)) {
+              fixedObstacles.push(buildLabelRect(center, center + 4, "r+ (Schw)", "middle", 3));
+            }
 
-          {/* Initial Condition Marker lambda_0 */}
-          {startPt && (
-            <g transform={`translate(${toSvgX(startPt.x)}, ${toSvgY(startPt.y)})`}>
-              <circle r="4" fill="var(--status-ok)" stroke="var(--surface)" strokeWidth="1" />
-              <text
-                x="6"
-                y="-4"
-                fill="var(--status-ok)"
-                fontSize="12"
-                fontFamily="var(--font-ibm-plex-mono), monospace"
-                fontWeight="600"
-              >
-                λ₀
-              </text>
-            </g>
-          )}
+            const markerInputs: MarkerLabelInput[] = [];
+            if (startPt) {
+              markerInputs.push({
+                id: "start",
+                svgX: toSvgX(startPt.x),
+                svgY: toSvgY(startPt.y),
+                text: "λ₀",
+                preferredAnchor: "start",
+                preferredDy: -5,
+              });
+            }
+            if (endPt) {
+              markerInputs.push({
+                id: "end",
+                svgX: toSvgX(endPt.x),
+                svgY: toSvgY(endPt.y),
+                text: "λ_end",
+                preferredAnchor: "start",
+                preferredDy: 15,
+              });
+            }
+            events.forEach((ev, i) => {
+              markerInputs.push({
+                id: `event-${i}`,
+                svgX: toSvgX(ev.x),
+                svgY: toSvgY(ev.y),
+                text: ev.name === "radial_turning_point" ? "Turning pt" : ev.name,
+                preferredAnchor: "start",
+                preferredDy: -5,
+              });
+            });
+            const labelPlacements = computeMarkerLabelPlacements(markerInputs, fixedObstacles, size);
 
-          {/* Terminal Condition Marker lambda_end */}
-          {endPt && (
-            <g transform={`translate(${toSvgX(endPt.x)}, ${toSvgY(endPt.y)})`}>
-              <circle r="4" fill="var(--status-error)" stroke="var(--surface)" strokeWidth="1" />
-              <text
-                x="6"
-                y="12"
-                fill="var(--status-error)"
-                fontSize="12"
-                fontFamily="var(--font-ibm-plex-mono), monospace"
-                fontWeight="600"
-              >
-                λ_end
-              </text>
-            </g>
-          )}
+            const renderLeader = (p: MarkerLabelPlacement, color: string) =>
+              Math.abs(p.dy) >= 18 ? (
+                <line
+                  x1={0}
+                  y1={0}
+                  x2={p.dx > 0 ? p.dx - 2 : p.dx + 2}
+                  y2={p.dy - 4}
+                  stroke={color}
+                  strokeWidth="0.75"
+                  opacity="0.55"
+                />
+              ) : null;
+
+            return (
+              <>
+                {events.map((ev, i) => {
+                  const p = labelPlacements[`event-${i}`] ?? { dx: 6, dy: -5, textAnchor: "start" as const };
+                  return (
+                    <g key={`event-${i}`} transform={`translate(${toSvgX(ev.x)}, ${toSvgY(ev.y)})`}>
+                      {renderLeader(p, "var(--status-error)")}
+                      <circle r="4" fill="none" stroke="var(--status-error)" strokeWidth="1.25" />
+                      <circle r="2" fill="var(--status-error)" />
+                      <text
+                        x={p.dx}
+                        y={p.dy}
+                        textAnchor={p.textAnchor}
+                        fill="var(--status-error)"
+                        fontSize="12"
+                        fontFamily="var(--font-ibm-plex-mono), monospace"
+                      >
+                        {ev.name === "radial_turning_point" ? "Turning pt" : ev.name}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {startPt && (() => {
+                  const p = labelPlacements["start"] ?? { dx: 6, dy: -5, textAnchor: "start" as const };
+                  return (
+                    <g transform={`translate(${toSvgX(startPt.x)}, ${toSvgY(startPt.y)})`}>
+                      {renderLeader(p, "var(--status-ok)")}
+                      <circle r="4" fill="var(--status-ok)" stroke="var(--surface)" strokeWidth="1" />
+                      <text
+                        x={p.dx}
+                        y={p.dy}
+                        textAnchor={p.textAnchor}
+                        fill="var(--status-ok)"
+                        fontSize="12"
+                        fontFamily="var(--font-ibm-plex-mono), monospace"
+                        fontWeight="600"
+                      >
+                        λ₀
+                      </text>
+                    </g>
+                  );
+                })()}
+
+                {endPt && (() => {
+                  const p = labelPlacements["end"] ?? { dx: 6, dy: 15, textAnchor: "start" as const };
+                  return (
+                    <g transform={`translate(${toSvgX(endPt.x)}, ${toSvgY(endPt.y)})`}>
+                      {renderLeader(p, "var(--status-error)")}
+                      <circle r="4" fill="var(--status-error)" stroke="var(--surface)" strokeWidth="1" />
+                      <text
+                        x={p.dx}
+                        y={p.dy}
+                        textAnchor={p.textAnchor}
+                        fill="var(--status-error)"
+                        fontSize="12"
+                        fontFamily="var(--font-ibm-plex-mono), monospace"
+                        fontWeight="600"
+                      >
+                        λ_end
+                      </text>
+                    </g>
+                  );
+                })()}
+              </>
+            );
+          })()}
 
           {/* Interactive cursor tracking indicator */}
           {hoverCoords && (

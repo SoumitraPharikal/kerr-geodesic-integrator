@@ -65,4 +65,4 @@ To verify the solver's constraint sensitivity and convergence under tolerance re
     \item Tier 2: $\text{rtol} = 10^{-8}, \text{atol} = 10^{-10}$
     \item Tier 3: $\text{rtol} = 10^{-10}, \text{atol} = 10^{-12}$
 \end{itemize}
-The maximum normalized Hamiltonian residual scaled as $\mathcal{H}_{\rm norm} \approx 4.2 \times 10^{-8}$ (Tier 1), $3.8 \times 10^{-11}$ (Tier 2), and $2.1 \times 10^{-14}$ (Tier 3), confirming monotonic error reduction consistent with high-order local truncation control under the \textsc{DOP853} kernel.
+In an illustrative standalone non-equatorial run, the maximum normalized Hamiltonian residual scaled as $\mathcal{H}_{\rm norm} \approx 4.2 \times 10^{-8}$ (Tier 1), $3.8 \times 10^{-11}$ (Tier 2), and $2.1 \times 10^{-14}$ (Tier 3) (historical report benchmark; the automated test suite in \texttt{tests/test\_schwarzschild\_validation.py} and \texttt{tests/test\_integrator.py} independently verifies monotonic error reduction under \textsc{DOP853} across tolerance refinements from $10^{-6}$ to $10^{-12}$).
